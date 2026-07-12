@@ -32,6 +32,7 @@ import { FileStorageModule } from './modules/file-storage/file-storage.module';
 import { ScriptEngineModule } from './modules/script-engine/script-engine.module';
 import { MemoryModule } from './modules/memory/memory.module';
 import { KnowledgeModule } from './modules/knowledge/knowledge.module';
+import { DecisionEngineModule } from './modules/decision-engine/decision-engine.module';
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { KnowledgeModule } from './modules/knowledge/knowledge.module';
     ScriptEngineModule,
     MemoryModule,
     KnowledgeModule,
+    DecisionEngineModule,
   ],
   providers: [
     {

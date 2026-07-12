@@ -1447,3 +1447,410 @@ model KnowledgeCache {
   @@index([lastAccessedAt])
   @@map("knowledge_cache")
 }
+
+// ============================================
+// AI DECISION ENGINE - Phase 3.5
+// ============================================
+
+model DecisionLog {
+  id                    String   @id @default(uuid())
+  conversationId        String
+  companyId             String
+  sessionId             String?  @db.VarChar(255)
+  callId                String?
+  contactId             String?
+  campaignId            String?
+  scriptNodeId          String?  @db.VarChar(100)
+  detectedIntent        IntentType
+  intentConfidence      Float
+  extractedEntities     Json?
+  businessRules         Json?
+  conversationAction    ConversationActionType
+  responsePlan          Json
+  leadQualification     LeadQualificationLevel
+  confidenceScores      Json
+  overallConfidence     Float
+  fallbackTriggered     Boolean  @default(false)
+  fallbackReason        String?  @db.Text
+  decisionReason        String   @db.LongText
+  knowledgeContext      Json?
+  requiredVariables     Json?
+  nextAction            String   @db.VarChar(255)
+  executionTime         Int?
+  metadata              Json?
+  createdAt             DateTime @default(now())
+
+  intentDetails         IntentDetection?
+  entities              EntityExtraction[]
+  conversationDecision  ConversationDecision?
+
+  @@index([conversationId])
+  @@index([companyId])
+  @@index([sessionId])
+  @@index([callId])
+  @@index([contactId])
+  @@index([campaignId])
+  @@index([detectedIntent])
+  @@index([conversationAction])
+  @@index([leadQualification])
+  @@index([overallConfidence])
+  @@index([createdAt])
+  @@map("decision_logs")
+}
+
+enum IntentType {
+  SUPPORT
+  INTERESTED
+  NOT_INTERESTED
+  CALL_BACK_LATER
+  BUSY
+  WRONG_NUMBER
+  NEED_PRICING
+  NEED_LOCATION
+  NEED_DETAILS
+  NEED_HUMAN
+  GREETING
+  GOODBYE
+  OTHER
+}
+
+enum ConversationActionType {
+  ASK_NEXT_QUESTION
+  SEARCH_KNOWLEDGE
+  REPEAT_QUESTION
+  CLARIFY
+  CONTINUE_SCRIPT
+  END_CONVERSATION
+  SCHEDULE_FOLLOW_UP
+  TRANSFER_TO_HUMAN
+}
+
+enum LeadQualificationLevel {
+  HOT_LEAD
+  WARM_LEAD
+  COLD_LEAD
+  INTERESTED
+  NOT_INTERESTED
+  CALL_BACK
+  BUSY
+  WRONG_NUMBER
+  DO_NOT_CALL
+}
+
+model IntentDetection {
+  id                    String   @id @default(uuid())
+  decisionLogId         String   @unique
+  conversationId        String
+  companyId             String
+  intent                IntentType
+  confidence            Float
+  rawInput              String   @db.LongText
+  processedInput        String?  @db.LongText
+  detectionMethod       String   @db.VarChar(100)
+  alternativeIntents    Json?
+  contextFactors        Json?
+  linguisticFeatures    Json?
+  sentimentScore        Float?
+  metadata              Json?
+  createdAt             DateTime @default(now())
+
+  decisionLog           DecisionLog @relation(fields: [decisionLogId], references: [id], onDelete: Cascade)
+
+  @@index([decisionLogId])
+  @@index([conversationId])
+  @@index([companyId])
+  @@index([intent])
+  @@index([confidence])
+  @@index([createdAt])
+  @@map("intent_detections")
+}
+
+model EntityExtraction {
+  id                    String   @id @default(uuid())
+  decisionLogId         String
+  conversationId        String
+  companyId             String
+  entityType            EntityType
+  entityValue           String   @db.Text
+  confidence            Float
+  startPosition         Int?
+  endPosition           Int?
+  normalizedValue       String?  @db.Text
+  extractionMethod      String   @db.VarChar(100)
+  metadata              Json?
+  createdAt             DateTime @default(now())
+
+  decisionLog           DecisionLog @relation(fields: [decisionLogId], references: [id], onDelete: Cascade)
+
+  @@index([decisionLogId])
+  @@index([conversationId])
+  @@index([companyId])
+  @@index([entityType])
+  @@index([confidence])
+  @@index([createdAt])
+  @@map("entity_extractions")
+}
+
+enum EntityType {
+  CUSTOMER_NAME
+  CITY
+  STATE
+  BUDGET
+  PROPERTY_TYPE
+  PROJECT_NAME
+  PREFERRED_LANGUAGE
+  PURCHASE_TIMELINE
+  EMAIL
+  PHONE
+  COMPANY_NAME
+}
+
+model BusinessRule {
+  id                    String   @id @default(uuid())
+  companyId             String
+  name                  String   @db.VarChar(255)
+  description           String?  @db.Text
+  ruleType              RuleType
+  category              String   @db.VarChar(100)
+  conditions            Json
+  actions               Json
+  priority              Int      @default(0)
+  isActive              Boolean  @default(true)
+  validFrom             DateTime?
+  validUntil            DateTime?
+  metadata              Json?
+  createdBy             String?  @db.VarChar(255)
+  updatedBy             String?  @db.VarChar(255)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  executions            BusinessRuleExecution[]
+
+  @@index([companyId])
+  @@index([ruleType])
+  @@index([category])
+  @@index([priority])
+  @@index([isActive])
+  @@index([validFrom])
+  @@index([validUntil])
+  @@index([createdAt])
+  @@map("business_rules")
+}
+
+enum RuleType {
+  COMPANY_POLICY
+  CAMPAIGN_RULE
+  SALES_RULE
+  SCRIPT_RULE
+  KNOWLEDGE_RULE
+  LANGUAGE_RULE
+  LEAD_QUALIFICATION
+  CONVERSATION_LIMIT
+}
+
+model BusinessRuleExecution {
+  id                    String   @id @default(uuid())
+  ruleId                String
+  conversationId        String
+  companyId             String
+  decisionLogId         String?
+  evaluationResult      Boolean
+  conditionsMet         Json?
+  actionsExecuted       Json?
+  executionTime         Int?
+  metadata              Json?
+  createdAt             DateTime @default(now())
+
+  rule                  BusinessRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId])
+  @@index([conversationId])
+  @@index([companyId])
+  @@index([decisionLogId])
+  @@index([evaluationResult])
+  @@index([createdAt])
+  @@map("business_rule_executions")
+}
+
+model ConversationDecision {
+  id                    String   @id @default(uuid())
+  decisionLogId         String   @unique
+  conversationId        String
+  companyId             String
+  currentNodeId         String?  @db.VarChar(100)
+  nextNodeId            String?  @db.VarChar(100)
+  action                ConversationActionType
+  actionParameters      Json?
+  responseType          String   @db.VarChar(100)
+  shouldContinue        Boolean  @default(true)
+  shouldEndConversation Boolean  @default(false)
+  escalationRequired    Boolean  @default(false)
+  reasoningSteps        Json
+  alternativeActions    Json?
+  metadata              Json?
+  createdAt             DateTime @default(now())
+
+  decisionLog           DecisionLog @relation(fields: [decisionLogId], references: [id], onDelete: Cascade)
+
+  @@index([decisionLogId])
+  @@index([conversationId])
+  @@index([companyId])
+  @@index([action])
+  @@index([shouldEndConversation])
+  @@index([escalationRequired])
+  @@index([createdAt])
+  @@map("conversation_decisions")
+}
+
+model ConfidenceScore {
+  id                    String   @id @default(uuid())
+  companyId             String
+  conversationId        String
+  decisionLogId         String?
+  scoreType             ConfidenceScoreType
+  score                 Float
+  threshold             Float
+  isAboveThreshold      Boolean
+  factors               Json?
+  calculationMethod     String   @db.VarChar(100)
+  metadata              Json?
+  createdAt             DateTime @default(now())
+
+  @@index([companyId])
+  @@index([conversationId])
+  @@index([decisionLogId])
+  @@index([scoreType])
+  @@index([score])
+  @@index([isAboveThreshold])
+  @@index([createdAt])
+  @@map("confidence_scores")
+}
+
+enum ConfidenceScoreType {
+  INTENT
+  KNOWLEDGE
+  DECISION
+  CONVERSATION
+  OVERALL
+}
+
+model LeadDecision {
+  id                    String   @id @default(uuid())
+  companyId             String
+  contactId             String
+  conversationId        String
+  decisionLogId         String?
+  qualification         LeadQualificationLevel
+  score                 Float
+  qualificationFactors  Json
+  qualificationRules    Json?
+  previousQualification LeadQualificationLevel?
+  confidenceScore       Float
+  recommendedAction     String   @db.VarChar(255)
+  followUpDate          DateTime?
+  metadata              Json?
+  createdAt             DateTime @default(now())
+
+  @@index([companyId])
+  @@index([contactId])
+  @@index([conversationId])
+  @@index([decisionLogId])
+  @@index([qualification])
+  @@index([score])
+  @@index([followUpDate])
+  @@index([createdAt])
+  @@map("lead_decisions")
+}
+
+model FallbackExecution {
+  id                    String   @id @default(uuid())
+  conversationId        String
+  companyId             String
+  decisionLogId         String?
+  triggerReason         FallbackReason
+  confidenceScore       Float
+  threshold             Float
+  originalIntent        IntentType?
+  fallbackAction        FallbackActionType
+  actionParameters      Json?
+  wasSuccessful         Boolean  @default(false)
+  recoveryAttempts      Int      @default(1)
+  metadata              Json?
+  createdAt             DateTime @default(now())
+
+  @@index([conversationId])
+  @@index([companyId])
+  @@index([decisionLogId])
+  @@index([triggerReason])
+  @@index([fallbackAction])
+  @@index([wasSuccessful])
+  @@index([createdAt])
+  @@map("fallback_executions")
+}
+
+enum FallbackReason {
+  LOW_INTENT_CONFIDENCE
+  LOW_KNOWLEDGE_CONFIDENCE
+  LOW_DECISION_CONFIDENCE
+  LOW_CONVERSATION_CONFIDENCE
+  LOW_OVERALL_CONFIDENCE
+  MISSING_REQUIRED_ENTITY
+  BUSINESS_RULE_VIOLATION
+  UNEXPECTED_INPUT
+}
+
+enum FallbackActionType {
+  REPEAT
+  CLARIFY
+  USE_SCRIPT_DEFAULT
+  ASK_SIMPLER_QUESTION
+  SKIP_QUESTION
+  SAFE_EXIT
+  ESCALATION_PLACEHOLDER
+}
+
+model DecisionMetrics {
+  id                    String   @id @default(uuid())
+  companyId             String
+  date                  DateTime @db.Date
+  metricType            String   @db.VarChar(100)
+  metricName            String   @db.VarChar(100)
+  metricValue           Float
+  count                 Int      @default(0)
+  averageConfidence     Float?
+  successRate           Float?
+  dimension1            String?  @db.VarChar(255)
+  dimension2            String?  @db.VarChar(255)
+  dimension3            String?  @db.VarChar(255)
+  metadata              Json?
+  createdAt             DateTime @default(now())
+
+  @@index([companyId])
+  @@index([date])
+  @@index([metricType])
+  @@index([metricName])
+  @@index([createdAt])
+  @@map("decision_metrics")
+}
+
+model DecisionConfiguration {
+  id                        String   @id @default(uuid())
+  companyId                 String   @unique
+  intentConfidenceThreshold Float    @default(0.7)
+  knowledgeConfidenceThreshold Float @default(0.6)
+  decisionConfidenceThreshold Float  @default(0.7)
+  conversationConfidenceThreshold Float @default(0.65)
+  overallConfidenceThreshold Float   @default(0.7)
+  enableFallback            Boolean  @default(true)
+  maxFallbackAttempts       Int      @default(3)
+  enableLeadQualification   Boolean  @default(true)
+  leadScoringWeights        Json?
+  enableBusinessRules       Boolean  @default(true)
+  enableEntityExtraction    Boolean  @default(true)
+  settings                  Json?
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  @@index([companyId])
+  @@map("decision_configurations")
+}
