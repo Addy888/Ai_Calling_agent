@@ -33,6 +33,7 @@ import { ScriptEngineModule } from './modules/script-engine/script-engine.module
 import { MemoryModule } from './modules/memory/memory.module';
 import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 import { DecisionEngineModule } from './modules/decision-engine/decision-engine.module';
+import { ConversationManagerModule } from './modules/conversation-manager/conversation-manager.module';
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { DecisionEngineModule } from './modules/decision-engine/decision-engine.
     MemoryModule,
     KnowledgeModule,
     DecisionEngineModule,
+    ConversationManagerModule,
   ],
   providers: [
     {

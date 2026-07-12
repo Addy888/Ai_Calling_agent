@@ -1854,3 +1854,523 @@ model DecisionConfiguration {
   @@index([companyId])
   @@map("decision_configurations")
 }
+
+// ============================================
+// ENTERPRISE CONVERSATION MANAGER - Phase 3.6
+// ============================================
+
+model ConversationSession {
+  id                    String              @id @default(uuid())
+  sessionId             String              @unique @db.VarChar(255)
+  companyId             String
+  campaignId            String?
+  contactId             String?
+  callId                String?
+  scriptId              String?
+  currentState          ConversationState   @default(GREETING)
+  previousState         ConversationState?
+  currentNodeId         String?             @db.VarChar(100)
+  language              String              @default("en") @db.VarChar(10)
+  isActive              Boolean             @default(true)
+  startedAt             DateTime            @default(now())
+  endedAt               DateTime?
+  lastActivityAt        DateTime            @default(now())
+  totalDuration         Int?
+  conversationResult    ConversationResult?
+  metadata              Json?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  timeline              ConversationTimeline[]
+  stateTransitions      ConversationStateTransition[]
+  questions             ConversationQuestion[]
+  objections            ConversationObjection[]
+  followUps             ConversationFollowUp[]
+  summary               ConversationSummary?
+  metrics               ConversationMetrics?
+
+  @@index([sessionId])
+  @@index([companyId])
+  @@index([campaignId])
+  @@index([contactId])
+  @@index([callId])
+  @@index([currentState])
+  @@index([isActive])
+  @@index([startedAt])
+  @@index([lastActivityAt])
+  @@map("conversation_sessions")
+}
+
+enum ConversationState {
+  GREETING
+  INTRODUCTION
+  QUALIFICATION
+  INFORMATION_COLLECTION
+  KNOWLEDGE_LOOKUP
+  OBJECTION_HANDLING
+  LEAD_QUALIFICATION
+  APPOINTMENT_OFFER
+  FOLLOW_UP
+  CLOSING
+  COMPLETED
+  CANCELLED
+}
+
+enum ConversationResult {
+  INTERESTED
+  NOT_INTERESTED
+  CALLBACK_SCHEDULED
+  APPOINTMENT_SCHEDULED
+  INFORMATION_PROVIDED
+  TRANSFERRED
+  HUNG_UP
+  COMPLETED
+  FAILED
+}
+
+model ConversationStateTransition {
+  id                    String            @id @default(uuid())
+  sessionId             String
+  fromState             ConversationState
+  toState               ConversationState
+  transitionReason      String            @db.Text
+  triggerType           String            @db.VarChar(100)
+  duration              Int?
+  metadata              Json?
+  createdAt             DateTime          @default(now())
+
+  session               ConversationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([fromState])
+  @@index([toState])
+  @@index([triggerType])
+  @@index([createdAt])
+  @@map("conversation_state_transitions")
+}
+
+model ConversationTimeline {
+  id                    String              @id @default(uuid())
+  sessionId             String
+  companyId             String
+  eventType             TimelineEventType
+  eventTitle            String              @db.VarChar(500)
+  eventDescription      String?             @db.Text
+  conversationState     ConversationState
+  nodeId                String?             @db.VarChar(100)
+  intentDetected        String?             @db.VarChar(100)
+  customerInput         String?             @db.LongText
+  systemResponse        String?             @db.LongText
+  knowledgeUsed         Boolean             @default(false)
+  knowledgeIds          Json?
+  entitiesExtracted     Json?
+  confidenceScore       Float?
+  duration              Int?
+  metadata              Json?
+  timestamp             DateTime            @default(now())
+
+  session               ConversationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([companyId])
+  @@index([eventType])
+  @@index([conversationState])
+  @@index([intentDetected])
+  @@index([timestamp])
+  @@map("conversation_timelines")
+}
+
+enum TimelineEventType {
+  GREETING
+  QUESTION_ASKED
+  ANSWER_RECEIVED
+  INTENT_CHANGED
+  STATE_CHANGED
+  KNOWLEDGE_SEARCHED
+  OBJECTION_RAISED
+  OBJECTION_HANDLED
+  ENTITY_EXTRACTED
+  DECISION_MADE
+  FOLLOW_UP_SCHEDULED
+  LEAD_QUALIFIED
+  ERROR_OCCURRED
+  SYSTEM_MESSAGE
+}
+
+model ConversationQuestion {
+  id                    String            @id @default(uuid())
+  sessionId             String
+  companyId             String
+  questionId            String            @db.VarChar(100)
+  questionText          String            @db.LongText
+  questionType          QuestionType
+  category              String?           @db.VarChar(100)
+  conversationState     ConversationState
+  order                 Int               @default(0)
+  isRequired            Boolean           @default(false)
+  wasAsked              Boolean           @default(false)
+  wasAnswered           Boolean           @default(false)
+  wasSkipped            Boolean           @default(false)
+  customerAnswer        String?           @db.LongText
+  extractedValue        String?           @db.Text
+  confidenceScore       Float?
+  attemptCount          Int               @default(1)
+  askedAt               DateTime          @default(now())
+  answeredAt            DateTime?
+  metadata              Json?
+
+  session               ConversationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([companyId])
+  @@index([questionType])
+  @@index([conversationState])
+  @@index([wasAnswered])
+  @@index([wasSkipped])
+  @@index([askedAt])
+  @@map("conversation_questions")
+}
+
+enum QuestionType {
+  GREETING
+  NAME
+  CITY
+  BUDGET
+  PROPERTY_TYPE
+  TIMELINE
+  CONTACT_INFO
+  CLARIFICATION
+  QUALIFICATION
+  FOLLOWUP
+  CLOSING
+  CUSTOM
+}
+
+model ConversationObjection {
+  id                    String              @id @default(uuid())
+  sessionId             String
+  companyId             String
+  objectionType         ObjectionType
+  objectionText         String              @db.LongText
+  conversationState     ConversationState
+  detectedIntent        String?             @db.VarChar(100)
+  confidenceScore       Float?
+  handlingStrategy      String              @db.VarChar(255)
+  responseUsed          String?             @db.LongText
+  wasResolved           Boolean             @default(false)
+  resolutionNotes       String?             @db.Text
+  detectedAt            DateTime            @default(now())
+  resolvedAt            DateTime?
+  metadata              Json?
+
+  session               ConversationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([companyId])
+  @@index([objectionType])
+  @@index([conversationState])
+  @@index([wasResolved])
+  @@index([detectedAt])
+  @@map("conversation_objections")
+}
+
+enum ObjectionType {
+  TOO_EXPENSIVE
+  NEED_TIME
+  ALREADY_PURCHASED
+  NOT_INTERESTED
+  BUSY
+  CALL_LATER
+  NEED_FAMILY_DISCUSSION
+  NEED_DETAILS
+  WRONG_NUMBER
+  DO_NOT_CALL
+  OTHER
+}
+
+model ConversationFollowUp {
+  id                    String              @id @default(uuid())
+  sessionId             String
+  companyId             String
+  contactId             String?
+  followUpType          FollowUpType
+  scheduledDate         DateTime
+  scheduledTime         String?             @db.VarChar(20)
+  reason                String              @db.Text
+  notes                 String?             @db.Text
+  status                FollowUpStatus      @default(SCHEDULED)
+  reminderSent          Boolean             @default(false)
+  reminderSentAt        DateTime?
+  completedAt           DateTime?
+  cancelledAt           DateTime?
+  cancellationReason    String?             @db.Text
+  metadata              Json?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  session               ConversationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([companyId])
+  @@index([contactId])
+  @@index([followUpType])
+  @@index([scheduledDate])
+  @@index([status])
+  @@index([reminderSent])
+  @@index([createdAt])
+  @@map("conversation_follow_ups")
+}
+
+enum FollowUpType {
+  TOMORROW
+  NEXT_WEEK
+  CUSTOM_DATE
+  AFTER_EVENT
+  CALLBACK
+  SEND_INFO
+}
+
+enum FollowUpStatus {
+  SCHEDULED
+  REMINDED
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+model ConversationSummary {
+  id                        String              @id @default(uuid())
+  sessionId                 String              @unique
+  companyId                 String
+  contactId                 String?
+  campaignId                String?
+  conversationResult        ConversationResult
+  leadStatus                LeadStatus
+  customerName              String?             @db.VarChar(255)
+  customerCity              String?             @db.VarChar(100)
+  customerBudget            String?             @db.VarChar(100)
+  customerPropertyType      String?             @db.VarChar(100)
+  keyInterests              Json?
+  extractedEntities         Json?
+  questionsAsked            Int                 @default(0)
+  questionsAnswered         Int                 @default(0)
+  objectionsRaised          Int                 @default(0)
+  objectionsResolved        Int                 @default(0)
+  knowledgeQueriesCount     Int                 @default(0)
+  stateTransitionsCount     Int                 @default(0)
+  totalDuration             Int
+  averageResponseTime       Float?
+  customerSentiment         String?             @db.VarChar(50)
+  conversationQuality       Float?
+  nextAction                String              @db.VarChar(255)
+  nextActionDate            DateTime?
+  followUpRequired          Boolean             @default(false)
+  appointmentScheduled      Boolean             @default(false)
+  detailedNotes             String?             @db.LongText
+  summaryText               String              @db.LongText
+  metadata                  Json?
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+
+  session                   ConversationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([companyId])
+  @@index([contactId])
+  @@index([campaignId])
+  @@index([conversationResult])
+  @@index([leadStatus])
+  @@index([nextActionDate])
+  @@index([followUpRequired])
+  @@index([createdAt])
+  @@map("conversation_summaries")
+}
+
+model ConversationMetrics {
+  id                        String              @id @default(uuid())
+  sessionId                 String              @unique
+  companyId                 String
+  totalEvents               Int                 @default(0)
+  totalQuestions            Int                 @default(0)
+  totalAnswers              Int                 @default(0)
+  totalObjections           Int                 @default(0)
+  totalKnowledgeQueries     Int                 @default(0)
+  totalStateTransitions     Int                 @default(0)
+  averageConfidenceScore    Float?
+  averageResponseTime       Float?
+  greetingDuration          Int?
+  qualificationDuration     Int?
+  objectionHandlingDuration Int?
+  closingDuration           Int?
+  totalDuration             Int
+  completionRate            Float?
+  successRate               Float?
+  metadata                  Json?
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+
+  session                   ConversationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([companyId])
+  @@index([totalEvents])
+  @@index([averageConfidenceScore])
+  @@index([completionRate])
+  @@index([successRate])
+  @@index([createdAt])
+  @@map("conversation_metrics")
+}
+
+model GreetingTemplate {
+  id                    String              @id @default(uuid())
+  companyId             String
+  greetingType          GreetingType
+  language              String              @default("en") @db.VarChar(10)
+  timeOfDay             TimeOfDay?
+  template              String              @db.LongText
+  variables             Json?
+  isDefault             Boolean             @default(false)
+  isActive              Boolean             @default(true)
+  priority              Int                 @default(0)
+  metadata              Json?
+  createdBy             String?             @db.VarChar(255)
+  updatedBy             String?             @db.VarChar(255)
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  @@index([companyId])
+  @@index([greetingType])
+  @@index([language])
+  @@index([timeOfDay])
+  @@index([isDefault])
+  @@index([isActive])
+  @@index([priority])
+  @@map("greeting_templates")
+}
+
+enum GreetingType {
+  MORNING
+  AFTERNOON
+  EVENING
+  NEW_CUSTOMER
+  RETURNING_CUSTOMER
+  LANGUAGE_BASED
+  CUSTOM
+}
+
+enum TimeOfDay {
+  MORNING
+  AFTERNOON
+  EVENING
+  NIGHT
+}
+
+model ObjectionResponse {
+  id                    String              @id @default(uuid())
+  companyId             String
+  objectionType         ObjectionType
+  responseName          String              @db.VarChar(255)
+  responseText          String              @db.LongText
+  language              String              @default("en") @db.VarChar(10)
+  strategy              String              @db.VarChar(100)
+  priority              Int                 @default(0)
+  isActive              Boolean             @default(true)
+  successRate           Float?
+  usageCount            Int                 @default(0)
+  metadata              Json?
+  createdBy             String?             @db.VarChar(255)
+  updatedBy             String?             @db.VarChar(255)
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  @@index([companyId])
+  @@index([objectionType])
+  @@index([language])
+  @@index([priority])
+  @@index([isActive])
+  @@index([successRate])
+  @@map("objection_responses")
+}
+
+model ClosingTemplate {
+  id                    String              @id @default(uuid())
+  companyId             String
+  closingType           ClosingType
+  language              String              @default("en") @db.VarChar(10)
+  template              String              @db.LongText
+  variables             Json?
+  isDefault             Boolean             @default(false)
+  isActive              Boolean             @default(true)
+  priority              Int                 @default(0)
+  metadata              Json?
+  createdBy             String?             @db.VarChar(255)
+  updatedBy             String?             @db.VarChar(255)
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  @@index([companyId])
+  @@index([closingType])
+  @@index([language])
+  @@index([isDefault])
+  @@index([isActive])
+  @@index([priority])
+  @@map("closing_templates")
+}
+
+enum ClosingType {
+  INTERESTED
+  NOT_INTERESTED
+  FOLLOW_UP
+  APPOINTMENT
+  THANK_YOU
+  CUSTOM
+}
+
+model ConversationConfiguration {
+  id                        String   @id @default(uuid())
+  companyId                 String   @unique
+  enableGreeting            Boolean  @default(true)
+  enableQualification       Boolean  @default(true)
+  enableObjectionHandling   Boolean  @default(true)
+  enableFollowUp            Boolean  @default(true)
+  enableClosing             Boolean  @default(true)
+  maxQuestionsPerSession    Int      @default(20)
+  maxObjectionAttempts      Int      @default(3)
+  sessionTimeout            Int      @default(1800)
+  autoFollowUpEnabled       Boolean  @default(true)
+  autoSummaryEnabled        Boolean  @default(true)
+  greetingRequired          Boolean  @default(true)
+  qualificationRequired     Boolean  @default(true)
+  closingRequired           Boolean  @default(true)
+  settings                  Json?
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  @@index([companyId])
+  @@map("conversation_configurations")
+}
+
+model ConversationAnalytics {
+  id                        String   @id @default(uuid())
+  companyId                 String
+  date                      DateTime @db.Date
+  metricType                String   @db.VarChar(100)
+  metricName                String   @db.VarChar(100)
+  metricValue               Float
+  count                     Int      @default(0)
+  averageValue              Float?
+  minValue                  Float?
+  maxValue                  Float?
+  dimension1                String?  @db.VarChar(255)
+  dimension2                String?  @db.VarChar(255)
+  dimension3                String?  @db.VarChar(255)
+  metadata                  Json?
+  createdAt                 DateTime @default(now())
+
+  @@index([companyId])
+  @@index([date])
+  @@index([metricType])
+  @@index([metricName])
+  @@index([createdAt])
+  @@map("conversation_analytics")
+}
