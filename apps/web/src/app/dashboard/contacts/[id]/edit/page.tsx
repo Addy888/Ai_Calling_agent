@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/toast';
 import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeft, Save } from 'lucide-react';
 import Link from 'next/link';
@@ -66,7 +66,7 @@ export default function EditContactPage() {
           });
         }
       } catch (error) {
-        toast({ title: 'Failed to fetch contact', variant: 'destructive' });
+        toast({ description: 'Failed to fetch contact', variant: 'destructive' });
       } finally {
         setFetching(false);
       }
@@ -107,13 +107,13 @@ export default function EditContactPage() {
       const data = await res.json();
       
       if (res.ok && data.success) {
-        toast({ title: 'Contact updated successfully' });
+        toast({ description: 'Contact updated successfully' });
         router.push('/dashboard/contacts');
       } else {
         throw new Error(data.message || data.error?.message || 'Failed to update contact');
       }
     } catch (error: any) {
-      toast({ title: error.message, variant: 'destructive' });
+      toast({ description: error.message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }

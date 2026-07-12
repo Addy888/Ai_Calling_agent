@@ -1192,3 +1192,258 @@ model MemoryConfiguration {
   @@index([companyId])
   @@map("memory_configuration")
 }
+
+
+// ============================================
+// ENTERPRISE KNOWLEDGE ENGINE - Phase 3.4
+// ============================================
+
+model KnowledgeDocument {
+  id              String            @id @default(uuid())
+  companyId       String
+  name            String            @db.VarChar(500)
+  originalName    String            @db.VarChar(500)
+  filePath        String            @db.VarChar(1000)
+  fileType        DocumentFileType
+  mimeType        String            @db.VarChar(200)
+  fileSize        BigInt
+  category        String?           @db.VarChar(100)
+  language        String            @default("en") @db.VarChar(10)
+  tags            Json?
+  author          String?           @db.VarChar(255)
+  version         String            @default("1.0.0") @db.VarChar(20)
+  status          DocumentStatus    @default(PENDING)
+  processingStatus ProcessingStatus @default(PENDING)
+  content         String?           @db.LongText
+  extractedText   String?           @db.LongText
+  metadata        Json?
+  priority        Int               @default(0)
+  isActive        Boolean           @default(true)
+  processedAt     DateTime?
+  createdBy       String?           @db.VarChar(255)
+  updatedBy       String?           @db.VarChar(255)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  deletedAt       DateTime?
+
+  chunks          KnowledgeChunk[]
+  versions        DocumentVersion[]
+  embeddingJobs   EmbeddingJob[]
+  indexes         KnowledgeIndex[]
+
+  @@index([companyId])
+  @@index([fileType])
+  @@index([category])
+  @@index([language])
+  @@index([status])
+  @@index([processingStatus])
+  @@index([isActive])
+  @@index([createdAt])
+  @@index([priority])
+  @@map("knowledge_documents")
+}
+
+enum DocumentFileType {
+  PDF
+  DOCX
+  TXT
+  CSV
+  MARKDOWN
+  JSON
+}
+
+enum DocumentStatus {
+  PENDING
+  ACTIVE
+  ARCHIVED
+  DELETED
+}
+
+enum ProcessingStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model KnowledgeChunk {
+  id              String   @id @default(uuid())
+  documentId      String
+  companyId       String
+  chunkIndex      Int
+  chunkType       ChunkType @default(PARAGRAPH)
+  content         String   @db.LongText
+  tokenCount      Int      @default(0)
+  startPosition   Int?
+  endPosition     Int?
+  metadata        Json?
+  embedding       Json?
+  embeddingStatus EmbeddingStatus @default(PENDING)
+  version         String   @default("1.0.0") @db.VarChar(20)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  document        KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  searchResults   SearchResult[]
+
+  @@index([documentId])
+  @@index([companyId])
+  @@index([chunkType])
+  @@index([embeddingStatus])
+  @@index([isActive])
+  @@index([createdAt])
+  @@map("knowledge_chunks")
+}
+
+enum ChunkType {
+  PARAGRAPH
+  HEADING
+  SENTENCE
+  TOKEN
+  CUSTOM
+}
+
+enum EmbeddingStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model DocumentVersion {
+  id            String   @id @default(uuid())
+  documentId    String
+  version       String   @db.VarChar(20)
+  content       String?  @db.LongText
+  extractedText String?  @db.LongText
+  changes       Json?
+  createdBy     String?  @db.VarChar(255)
+  createdAt     DateTime @default(now())
+
+  document      KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, version])
+  @@index([documentId])
+  @@index([version])
+  @@index([createdAt])
+  @@map("document_versions")
+}
+
+model EmbeddingJob {
+  id            String          @id @default(uuid())
+  documentId    String
+  companyId     String
+  provider      String          @db.VarChar(100)
+  model         String          @db.VarChar(100)
+  status        EmbeddingStatus @default(PENDING)
+  totalChunks   Int             @default(0)
+  processedChunks Int           @default(0)
+  failedChunks  Int             @default(0)
+  startedAt     DateTime?
+  completedAt   DateTime?
+  errorMessage  String?         @db.Text
+  metadata      Json?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  document      KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([companyId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("embedding_jobs")
+}
+
+model KnowledgeIndex {
+  id            String   @id @default(uuid())
+  documentId    String
+  companyId     String
+  indexType     String   @db.VarChar(50)
+  indexKey      String   @db.VarChar(500)
+  indexValue    String   @db.Text
+  metadata      Json?
+  createdAt     DateTime @default(now())
+
+  document      KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([companyId])
+  @@index([indexType])
+  @@index([indexKey])
+  @@index([createdAt])
+  @@map("knowledge_indexes")
+}
+
+model SearchHistory {
+  id            String   @id @default(uuid())
+  companyId     String
+  userId        String?
+  query         String   @db.Text
+  searchType    SearchType @default(KEYWORD)
+  filters       Json?
+  resultCount   Int      @default(0)
+  executionTime Int?
+  metadata      Json?
+  createdAt     DateTime @default(now())
+
+  results       SearchResult[]
+
+  @@index([companyId])
+  @@index([userId])
+  @@index([searchType])
+  @@index([createdAt])
+  @@map("search_history")
+}
+
+enum SearchType {
+  KEYWORD
+  SEMANTIC
+  HYBRID
+  METADATA
+}
+
+model SearchResult {
+  id              String   @id @default(uuid())
+  searchHistoryId String
+  chunkId         String
+  rank            Int
+  score           Float
+  keywordScore    Float?
+  semanticScore   Float?
+  metadataScore   Float?
+  combinedScore   Float
+  metadata        Json?
+  createdAt       DateTime @default(now())
+
+  searchHistory   SearchHistory  @relation(fields: [searchHistoryId], references: [id], onDelete: Cascade)
+  chunk           KnowledgeChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
+
+  @@index([searchHistoryId])
+  @@index([chunkId])
+  @@index([rank])
+  @@index([score])
+  @@map("search_results")
+}
+
+model KnowledgeCache {
+  id            String   @id @default(uuid())
+  companyId     String
+  cacheKey      String   @db.VarChar(500)
+  cacheType     String   @db.VarChar(50)
+  cacheValue    String   @db.LongText
+  metadata      Json?
+  accessCount   Int      @default(0)
+  lastAccessedAt DateTime @default(now())
+  expiresAt     DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([companyId, cacheKey])
+  @@index([companyId])
+  @@index([cacheType])
+  @@index([expiresAt])
+  @@index([lastAccessedAt])
+  @@map("knowledge_cache")
+}

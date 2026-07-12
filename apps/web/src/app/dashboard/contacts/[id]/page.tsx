@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/toast';
 import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeft, Edit, Mail, Phone, MapPin, Building, Globe, Clock, Tag } from 'lucide-react';
 import Link from 'next/link';
@@ -26,11 +26,11 @@ export default function ContactDetailsPage() {
         if (data.success) {
           setContact(data.data);
         } else {
-          toast({ title: 'Contact not found', variant: 'destructive' });
+          toast({ description: 'Contact not found', variant: 'destructive' });
           router.push('/dashboard/contacts');
         }
       } catch (error) {
-        toast({ title: 'Failed to fetch contact details', variant: 'destructive' });
+        toast({ description: 'Failed to fetch contact details', variant: 'destructive' });
       } finally {
         setLoading(false);
       }

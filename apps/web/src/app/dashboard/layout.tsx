@@ -10,16 +10,18 @@ import { cn } from '@/lib/utils';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     if (!authService.isAuthenticated()) {
       router.push('/login');
     }
   }, [router]);
 
-  if (!authService.isAuthenticated()) {
+  if (!mounted || !authService.isAuthenticated()) {
     return null;
   }
 

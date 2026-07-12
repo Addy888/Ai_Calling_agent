@@ -21,6 +21,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Brain,
+  Database,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -34,6 +35,7 @@ const navigation = [
   { name: 'Scripts', href: '/dashboard/scripts', icon: FileText },
   { name: 'Prompts', href: '/dashboard/prompts', icon: MessageSquare },
   { name: 'Memory', href: '/dashboard/memory', icon: Brain },
+  { name: 'Knowledge Engine', href: '/dashboard/knowledge-engine', icon: Database },
   { name: 'Knowledge Base', href: '/dashboard/knowledge-base', icon: BookOpen },
   { name: 'Voice Library', href: '/dashboard/voice-library', icon: Mic },
   { name: 'Call History', href: '/dashboard/calls', icon: Phone },

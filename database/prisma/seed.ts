@@ -106,6 +106,18 @@ async function main() {
 
     // Activity Logs
     { name: 'View Activity Logs', slug: 'activity-logs.view', module: 'activity-logs' },
+
+    // Memory Management
+    { name: 'Read Memory', slug: 'memory:read', module: 'memory' },
+    { name: 'Create Memory', slug: 'memory:create', module: 'memory' },
+    { name: 'Update Memory', slug: 'memory:update', module: 'memory' },
+    { name: 'Delete Memory', slug: 'memory:delete', module: 'memory' },
+
+    // Knowledge Engine
+    { name: 'Read Knowledge', slug: 'knowledge:read', module: 'knowledge' },
+    { name: 'Create Knowledge', slug: 'knowledge:create', module: 'knowledge' },
+    { name: 'Update Knowledge', slug: 'knowledge:update', module: 'knowledge' },
+    { name: 'Delete Knowledge', slug: 'knowledge:delete', module: 'knowledge' },
   ];
 
   const createdPermissions = await Promise.all(

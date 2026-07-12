@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/toast';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Save } from 'lucide-react';
 import Link from 'next/link';
@@ -67,13 +67,13 @@ export default function AddContactPage() {
       const data = await res.json();
       
       if (res.ok && data.success) {
-        toast({ title: 'Contact created successfully' });
+        toast({ description: 'Contact created successfully' });
         router.push('/dashboard/contacts');
       } else {
         throw new Error(data.message || data.error?.message || 'Failed to create contact');
       }
     } catch (error: any) {
-      toast({ title: error.message, variant: 'destructive' });
+      toast({ description: error.message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search, Upload, Edit, Trash2, Mail, Phone as PhoneIcon, Download } from 'lucide-react';
 import Link from 'next/link';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/toast';
 import { useRouter } from 'next/navigation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -45,7 +45,7 @@ export default function ContactsPage() {
         setTotal(data.data.meta?.totalItems || 0);
       }
     } catch (error) {
-      toast({ title: 'Error fetching contacts', variant: 'destructive' });
+      toast({ description: 'Error fetching contacts', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -64,11 +64,11 @@ export default function ContactsPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
-        toast({ title: 'Contact deleted successfully' });
+        toast({ description: 'Contact deleted successfully' });
         fetchContacts();
       }
     } catch (error) {
-      toast({ title: 'Error deleting contact', variant: 'destructive' });
+      toast({ description: 'Error deleting contact', variant: 'destructive' });
     }
   };
 
@@ -93,7 +93,7 @@ export default function ContactsPage() {
       a.click();
       a.remove();
     } catch (error) {
-      toast({ title: 'Error exporting contacts', variant: 'destructive' });
+      toast({ description: 'Error exporting contacts', variant: 'destructive' });
     }
   };
 

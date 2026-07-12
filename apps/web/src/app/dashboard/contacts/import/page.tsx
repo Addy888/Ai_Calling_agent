@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/toast';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, UploadCloud, FileType, CheckCircle2, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
@@ -48,12 +48,12 @@ export default function ImportContactsPage() {
       
       if (res.ok && data.success) {
         setResult(data.data);
-        toast({ title: 'File processed successfully' });
+        toast({ description: 'File processed successfully' });
       } else {
         throw new Error(data.message || data.error?.message || 'Failed to upload file');
       }
     } catch (error: any) {
-      toast({ title: error.message, variant: 'destructive' });
+      toast({ description: error.message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }

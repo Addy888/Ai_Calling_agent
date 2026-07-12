@@ -31,6 +31,7 @@ import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
 import { FileStorageModule } from './modules/file-storage/file-storage.module';
 import { ScriptEngineModule } from './modules/script-engine/script-engine.module';
 import { MemoryModule } from './modules/memory/memory.module';
+import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { MemoryModule } from './modules/memory/memory.module';
     FileStorageModule,
     ScriptEngineModule,
     MemoryModule,
+    KnowledgeModule,
   ],
   providers: [
     {

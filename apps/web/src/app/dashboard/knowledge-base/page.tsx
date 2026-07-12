@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Plus, FileText, Upload, Download, Eye, Trash2 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { Spinner } from '@/components/ui/spinner';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/toast';
 
 interface KnowledgeBase {
   id: string;
@@ -292,7 +292,7 @@ export default function KnowledgeBasePage() {
         </Dialog>
       </div>
 
-      {!loading && (
+      {!loading && items && (
         <div className="grid gap-4 md:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -300,7 +300,7 @@ export default function KnowledgeBasePage() {
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{items.length}</div>
+              <div className="text-2xl font-bold">{items?.length || 0}</div>
             </CardContent>
           </Card>
           <Card>
@@ -310,7 +310,7 @@ export default function KnowledgeBasePage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {items.filter(i => i.isActive).length}
+                {items?.filter(i => i.isActive).length || 0}
               </div>
             </CardContent>
           </Card>
@@ -321,7 +321,7 @@ export default function KnowledgeBasePage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {new Set(items.map(i => i.type)).size}
+                {items ? new Set(items.map(i => i.type)).size : 0}
               </div>
             </CardContent>
           </Card>
@@ -332,11 +332,11 @@ export default function KnowledgeBasePage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {items.filter(i => {
+                {items ? items.filter(i => {
                   const itemDate = new Date(i.updatedAt);
                   const today = new Date();
                   return itemDate.toDateString() === today.toDateString();
-                }).length}
+                }).length : 0}
               </div>
             </CardContent>
           </Card>
