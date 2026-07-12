@@ -1,0 +1,1194 @@
+// Prisma Schema for AI Calling Agent Platform
+// Phase 1.4 + 1.5 - Enterprise Foundation with Authentication
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../node_modules/.prisma/client"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+// ============================================
+// COMPANY & USER MANAGEMENT
+// ============================================
+
+model Company {
+  id        String   @id @default(uuid())
+  name      String   @db.VarChar(255)
+  email     String   @unique @db.VarChar(255)
+  phone     String?  @db.VarChar(50)
+  address   String?  @db.Text
+  website   String?  @db.VarChar(255)
+  logo      String?  @db.VarChar(500)
+  status    String   @default("ACTIVE") @db.VarChar(50)
+  isActive  Boolean  @default(true)
+  createdBy String?  @db.VarChar(255)
+  updatedBy String?  @db.VarChar(255)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  users          User[]
+  campaigns      Campaign[]
+  contacts       Contact[]
+  scripts        Script[]
+  prompts        Prompt[]
+  knowledgeBase  KnowledgeBase[]
+  voiceProfiles  VoiceProfile[]
+  settings       Setting[]
+  activityLogs   ActivityLog[]
+  notifications  Notification[]
+  auditLogs      AuditLog[]
+  analytics      Analytics[]
+  reports        Report[]
+  fileStorage    FileStorage[]
+  aiProviderConfigs AIProviderConfig[]
+  aiPersonalities   AIPersonality[]
+  promptTemplates   PromptTemplate[]
+
+  @@index([email])
+  @@index([isActive])
+  @@index([status])
+  @@index([createdAt])
+  @@map("companies")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  companyId     String
+  email         String    @unique @db.VarChar(255)
+  password      String    @db.VarChar(255)
+  firstName     String    @db.VarChar(100)
+  lastName      String    @db.VarChar(100)
+  phone         String?   @db.VarChar(50)
+  avatar        String?   @db.VarChar(500)
+  status        String    @default("ACTIVE") @db.VarChar(50)
+  isActive      Boolean   @default(true)
+  emailVerified Boolean   @default(false)
+  lastLoginAt   DateTime?
+  createdBy     String?   @db.VarChar(255)
+  updatedBy     String?   @db.VarChar(255)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  roles           UserRole[]
+  refreshTokens   RefreshToken[]
+  campaigns       Campaign[]
+  activityLogs    ActivityLog[]
+  reports         Report[]
+  fileStorage     FileStorage[]
+
+  @@index([companyId])
+  @@index([email])
+  @@index([isActive])
+  @@index([status])
+  @@index([createdAt])
+  @@map("users")
+}
+
+model Role {
+  id          String    @id @default(uuid())
+  name        String    @unique @db.VarChar(100)
+  slug        String    @unique @db.VarChar(100)
+  description String?   @db.Text
+  status      String    @default("ACTIVE") @db.VarChar(50)
+  isActive    Boolean   @default(true)
+  createdBy   String?   @db.VarChar(255)
+  updatedBy   String?   @db.VarChar(255)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  users       UserRole[]
+  permissions RolePermission[]
+
+  @@index([slug])
+  @@index([isActive])
+  @@index([status])
+  @@index([createdAt])
+  @@map("roles")
+}
+
+model Permission {
+  id          String    @id @default(uuid())
+  name        String    @unique @db.VarChar(100)
+  slug        String    @unique @db.VarChar(100)
+  module      String    @db.VarChar(100)
+  description String?   @db.Text
+  status      String    @default("ACTIVE") @db.VarChar(50)
+  createdBy   String?   @db.VarChar(255)
+  updatedBy   String?   @db.VarChar(255)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  roles RolePermission[]
+
+  @@index([slug])
+  @@index([module])
+  @@index([status])
+  @@index([createdAt])
+  @@map("permissions")
+}
+
+model UserRole {
+  id        String   @id @default(uuid())
+  userId    String
+  roleId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  id           String   @id @default(uuid())
+  roleId       String
+  permissionId String
+  createdAt    DateTime @default(now())
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique @db.VarChar(500)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+
+// ============================================
+// CAMPAIGN MANAGEMENT
+// ============================================
+
+model Campaign {
+  id          String         @id @default(uuid())
+  companyId   String
+  userId      String
+  name        String         @db.VarChar(255)
+  description String?        @db.Text
+  status      CampaignStatus @default(DRAFT)
+  scriptId    String?
+  promptId    String?
+  voiceId     String?
+  startDate   DateTime?
+  endDate     DateTime?
+  timezone    String?        @db.VarChar(100)
+  settings    Json?
+  createdBy   String?        @db.VarChar(255)
+  updatedBy   String?        @db.VarChar(255)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  deletedAt   DateTime?
+
+  company Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  script  Script?        @relation(fields: [scriptId], references: [id], onDelete: SetNull)
+  prompt  Prompt?        @relation(fields: [promptId], references: [id], onDelete: SetNull)
+  voice   VoiceProfile?  @relation(fields: [voiceId], references: [id], onDelete: SetNull)
+  calls   Call[]
+  contacts Contact[]
+
+  @@index([companyId])
+  @@index([userId])
+  @@index([status])
+  @@index([scriptId])
+  @@index([promptId])
+  @@index([voiceId])
+  @@index([createdAt])
+  @@map("campaigns")
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+// ============================================
+// CONTACT MANAGEMENT
+// ============================================
+
+model Contact {
+  id            String    @id @default(uuid())
+  companyId     String
+  campaignId    String?
+  firstName     String    @db.VarChar(100)
+  lastName      String    @db.VarChar(100)
+  fullName      String    @db.VarChar(255)
+  phone         String    @db.VarChar(50)
+  countryCode   String?   @default("+1") @db.VarChar(10)
+  email         String?   @db.VarChar(255)
+  language      String    @default("en") @db.VarChar(10)
+  city          String?   @db.VarChar(100)
+  state         String?   @db.VarChar(100)
+  country       String?   @db.VarChar(100)
+  postalCode    String?   @db.VarChar(20)
+  company       String?   @db.VarChar(255)
+  designation   String?   @db.VarChar(100)
+  tags          Json?
+  notes         String?   @db.Text
+  status        String    @default("ACTIVE") @db.VarChar(50)
+  isDuplicate   Boolean   @default(false)
+  lastCalledAt  DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+  createdBy     String?   @db.VarChar(255)
+  updatedBy     String?   @db.VarChar(255)
+
+  companyRef  Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  campaignRef Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  calls       Call[]
+
+  @@unique([companyId, phone])
+  @@unique([companyId, email])
+  @@index([companyId])
+  @@index([campaignId])
+  @@index([phone])
+  @@index([email])
+  @@index([fullName])
+  @@index([status])
+  @@index([isDuplicate])
+  @@index([language])
+  @@index([country])
+  @@index([createdAt])
+  @@index([lastCalledAt])
+  @@map("contacts")
+}
+
+// ============================================
+// SCRIPT & PROMPT MANAGEMENT
+// ============================================
+
+model Script {
+  id          String    @id @default(uuid())
+  companyId   String
+  name        String    @db.VarChar(255)
+  language    String    @default("en") @db.VarChar(10)
+  description String?   @db.Text
+  content     String    @db.LongText
+  version     String    @default("1.0.0") @db.VarChar(20)
+  status      String    @default("ACTIVE") @db.VarChar(50)
+  isActive    Boolean   @default(true)
+  createdBy   String?   @db.VarChar(255)
+  updatedBy   String?   @db.VarChar(255)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  company   Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  campaigns Campaign[]
+  versions  ScriptVersion[]
+
+  @@index([companyId])
+  @@index([isActive])
+  @@index([status])
+  @@index([createdAt])
+  @@map("scripts")
+}
+
+model Prompt {
+  id          String       @id @default(uuid())
+  companyId   String
+  name        String       @db.VarChar(255)
+  description String?      @db.Text
+  content     String       @db.LongText
+  version     String       @default("1.0.0") @db.VarChar(20)
+  status      PromptStatus @default(DRAFT)
+  temperature Float?       @default(0.7)
+  maxTokens   Int?         @default(4000)
+  createdBy   String?      @db.VarChar(255)
+  updatedBy   String?      @db.VarChar(255)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  deletedAt   DateTime?
+
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  campaigns Campaign[]
+
+  @@index([companyId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("prompts")
+}
+
+enum PromptStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+// ============================================
+// KNOWLEDGE BASE
+// ============================================
+
+model KnowledgeBase {
+  id          String            @id @default(uuid())
+  companyId   String
+  title       String            @db.VarChar(255)
+  type        KnowledgeBaseType
+  content     String            @db.LongText
+  source      String?           @db.VarChar(500)
+  category    String?           @db.VarChar(100)
+  tags        Json?
+  metadata    Json?
+  status      String            @default("ACTIVE") @db.VarChar(50)
+  isActive    Boolean           @default(true)
+  createdBy   String?           @db.VarChar(255)
+  updatedBy   String?           @db.VarChar(255)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  deletedAt   DateTime?
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([type])
+  @@index([category])
+  @@index([isActive])
+  @@index([status])
+  @@index([createdAt])
+  @@map("knowledge_base")
+}
+
+enum KnowledgeBaseType {
+  FAQ
+  POLICY
+  PRICING
+  DOCUMENTATION
+  WEBSITE
+  CUSTOM
+}
+
+// ============================================
+// VOICE PROFILES (Placeholder for Phase 2)
+// ============================================
+
+model VoiceProfile {
+  id          String    @id @default(uuid())
+  companyId   String
+  name        String    @db.VarChar(255)
+  description String?   @db.Text
+  language    String    @default("en") @db.VarChar(10)
+  gender      String?   @db.VarChar(20)
+  metadata    Json?
+  status      String    @default("ACTIVE") @db.VarChar(50)
+  isActive    Boolean   @default(true)
+  createdBy   String?   @db.VarChar(255)
+  updatedBy   String?   @db.VarChar(255)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  campaigns Campaign[]
+
+  @@index([companyId])
+  @@index([isActive])
+  @@index([status])
+  @@index([createdAt])
+  @@map("voice_profiles")
+}
+
+// ============================================
+// CALL MANAGEMENT (Placeholder for Phase 2)
+// ============================================
+
+model Call {
+  id          String     @id @default(uuid())
+  campaignId  String
+  contactId   String
+  status      CallStatus @default(PENDING)
+  startTime   DateTime?
+  endTime     DateTime?
+  duration    Int?
+  metadata    Json?
+  createdBy   String?    @db.VarChar(255)
+  updatedBy   String?    @db.VarChar(255)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  deletedAt   DateTime?
+
+  campaign    Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact     Contact          @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  transcript  CallTranscript?
+  recording   CallRecording?
+
+  @@index([campaignId])
+  @@index([contactId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("calls")
+}
+
+enum CallStatus {
+  PENDING
+  QUEUED
+  CALLING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model CallTranscript {
+  id        String   @id @default(uuid())
+  callId    String   @unique
+  content   String   @db.LongText
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  call Call @relation(fields: [callId], references: [id], onDelete: Cascade)
+
+  @@index([callId])
+  @@map("call_transcripts")
+}
+
+model CallRecording {
+  id        String   @id @default(uuid())
+  callId    String   @unique
+  filePath  String   @db.VarChar(500)
+  fileSize  Int
+  duration  Int
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  call Call @relation(fields: [callId], references: [id], onDelete: Cascade)
+
+  @@index([callId])
+  @@map("call_recordings")
+}
+
+// ============================================
+// ANALYTICS & REPORTING
+// ============================================
+
+model Analytics {
+  id          String   @id @default(uuid())
+  companyId   String
+  date        DateTime @db.Date
+  metric      String   @db.VarChar(100)
+  category    String   @db.VarChar(100)
+  value       Float
+  dimension1  String?  @db.VarChar(255)
+  dimension2  String?  @db.VarChar(255)
+  dimension3  String?  @db.VarChar(255)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([date])
+  @@index([metric])
+  @@index([category])
+  @@index([createdAt])
+  @@map("analytics")
+}
+
+model Report {
+  id          String     @id @default(uuid())
+  companyId   String
+  userId      String
+  name        String     @db.VarChar(255)
+  description String?    @db.Text
+  type        ReportType
+  parameters  Json?
+  schedule    Json?
+  format      String     @default("JSON") @db.VarChar(50)
+  status      String     @default("ACTIVE") @db.VarChar(50)
+  lastRunAt   DateTime?
+  nextRunAt   DateTime?
+  isActive    Boolean    @default(true)
+  createdBy   String?    @db.VarChar(255)
+  updatedBy   String?    @db.VarChar(255)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  deletedAt   DateTime?
+
+  company    Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  executions ReportExecution[]
+
+  @@index([companyId])
+  @@index([userId])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+  @@map("reports")
+}
+
+enum ReportType {
+  CAMPAIGN_PERFORMANCE
+  CONTACT_ANALYSIS
+  USER_ACTIVITY
+  KNOWLEDGE_BASE_USAGE
+  SYSTEM_HEALTH
+  CUSTOM
+}
+
+model ReportExecution {
+  id            String   @id @default(uuid())
+  reportId      String
+  executedBy    String?
+  parameters    Json?
+  result        Json?
+  status        String   @db.VarChar(50)
+  startedAt     DateTime @default(now())
+  completedAt   DateTime?
+  errorMessage  String?  @db.Text
+  filePath      String?  @db.VarChar(500)
+  fileSize      Int?
+  recordCount   Int?
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@index([status])
+  @@index([startedAt])
+  @@map("report_executions")
+}
+
+// ============================================
+// SETTINGS & CONFIGURATION
+// ============================================
+
+model Setting {
+  id          String   @id @default(uuid())
+  companyId   String
+  key         String   @db.VarChar(255)
+  value       String   @db.Text
+  type        String   @db.VarChar(50)
+  category    String?  @db.VarChar(100)
+  description String?  @db.Text
+  isPublic    Boolean  @default(false)
+  metadata    Json?
+  createdBy   String?  @db.VarChar(255)
+  updatedBy   String?  @db.VarChar(255)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, key])
+  @@index([companyId])
+  @@index([key])
+  @@index([category])
+  @@index([createdAt])
+  @@map("settings")
+}
+
+// ============================================
+// NOTIFICATIONS & AUDIT
+// ============================================
+
+model Notification {
+  id          String           @id @default(uuid())
+  companyId   String
+  userId      String?
+  title       String           @db.VarChar(255)
+  message     String           @db.Text
+  type        NotificationType @default(INFO)
+  category    String?          @db.VarChar(100)
+  actionUrl   String?          @db.VarChar(500)
+  metadata    Json?
+  isRead      Boolean          @default(false)
+  readAt      DateTime?
+  expiresAt   DateTime?
+  createdBy   String?          @db.VarChar(255)
+  createdAt   DateTime         @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([userId])
+  @@index([type])
+  @@index([isRead])
+  @@index([createdAt])
+  @@index([expiresAt])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  SUCCESS
+  WARNING
+  ERROR
+  INFO
+  SYSTEM
+}
+
+model AuditLog {
+  id          String    @id @default(uuid())
+  companyId   String
+  userId      String?
+  entityType  String    @db.VarChar(100)
+  entityId    String    @db.VarChar(255)
+  action      String    @db.VarChar(100)
+  oldValues   Json?
+  newValues   Json?
+  changes     Json?
+  ipAddress   String?   @db.VarChar(45)
+  userAgent   String?   @db.Text
+  sessionId   String?   @db.VarChar(255)
+  metadata    Json?
+  createdAt   DateTime  @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([userId])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ============================================
+// SYSTEM & FILES
+// ============================================
+
+model SystemHealth {
+  id          String   @id @default(uuid())
+  component   String   @db.VarChar(100)
+  status      String   @db.VarChar(50)
+  version     String?  @db.VarChar(100)
+  uptime      Int?
+  memory      Json?
+  cpu         Json?
+  disk        Json?
+  network     Json?
+  database    Json?
+  errors      Json?
+  metadata    Json?
+  checkedAt   DateTime @default(now())
+
+  @@index([component])
+  @@index([status])
+  @@index([checkedAt])
+  @@map("system_health")
+}
+
+model FileStorage {
+  id          String    @id @default(uuid())
+  companyId   String
+  userId      String?
+  fileName    String    @db.VarChar(500)
+  originalName String   @db.VarChar(500)
+  filePath    String    @db.VarChar(1000)
+  fileType    String    @db.VarChar(100)
+  mimeType    String    @db.VarChar(200)
+  fileSize    BigInt
+  category    String?   @db.VarChar(100)
+  description String?   @db.Text
+  metadata    Json?
+  isPublic    Boolean   @default(false)
+  downloadCount Int     @default(0)
+  uploadedBy  String?   @db.VarChar(255)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([userId])
+  @@index([fileType])
+  @@index([category])
+  @@index([createdAt])
+  @@map("file_storage")
+}
+
+// ============================================
+// ACTIVITY LOGS
+// ============================================
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  companyId String
+  userId    String?
+  action    String   @db.VarChar(255)
+  module    String   @db.VarChar(100)
+  entityType String? @db.VarChar(100)
+  entityId   String? @db.VarChar(255)
+  details   Json?
+  ipAddress String?  @db.VarChar(45)
+  userAgent String?  @db.Text
+  sessionId String?  @db.VarChar(255)
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([userId])
+  @@index([module])
+  @@index([action])
+  @@index([entityType])
+  @@index([createdAt])
+  @@map("activity_logs")
+}
+
+// ============================================
+// AI CORE - Phase 3.1
+// ============================================
+
+model AIProvider {
+  id          String    @id @default(uuid())
+  name        String    @unique @db.VarChar(100)
+  type        String    @db.VarChar(50)
+  apiEndpoint String?   @db.VarChar(500)
+  isActive    Boolean   @default(true)
+  metadata    Json?
+  createdBy   String?   @db.VarChar(255)
+  updatedBy   String?   @db.VarChar(255)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  configs     AIProviderConfig[]
+  
+  @@index([name])
+  @@index([type])
+  @@index([isActive])
+  @@map("ai_providers")
+}
+
+model AIProviderConfig {
+  id          String   @id @default(uuid())
+  companyId   String
+  providerId  String
+  apiKey      String   @db.Text
+  modelName   String   @db.VarChar(100)
+  temperature Float    @default(0.7)
+  maxTokens   Int      @default(4000)
+  topP        Float?   @default(1.0)
+  frequencyPenalty Float? @default(0.0)
+  presencePenalty Float? @default(0.0)
+  isDefault   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  settings    Json?
+  createdBy   String?  @db.VarChar(255)
+  updatedBy   String?  @db.VarChar(255)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company  Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  provider AIProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, providerId])
+  @@index([companyId])
+  @@index([providerId])
+  @@index([isDefault])
+  @@index([isActive])
+  @@map("ai_provider_configs")
+}
+
+model AIPersonality {
+  id          String   @id @default(uuid())
+  companyId   String?
+  name        String   @db.VarChar(255)
+  type        String   @db.VarChar(100)
+  description String?  @db.Text
+  systemPrompt String  @db.LongText
+  traits      Json?
+  language    String   @default("en") @db.VarChar(10)
+  isSystem    Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  metadata    Json?
+  createdBy   String?  @db.VarChar(255)
+  updatedBy   String?  @db.VarChar(255)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([type])
+  @@index([language])
+  @@index([isSystem])
+  @@index([isActive])
+  @@map("ai_personalities")
+}
+
+model PromptTemplate {
+  id          String   @id @default(uuid())
+  companyId   String?
+  name        String   @db.VarChar(255)
+  category    String   @db.VarChar(100)
+  description String?  @db.Text
+  template    String   @db.LongText
+  variables   Json?
+  language    String   @default("en") @db.VarChar(10)
+  version     String   @default("1.0.0") @db.VarChar(20)
+  isSystem    Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  metadata    Json?
+  createdBy   String?  @db.VarChar(255)
+  updatedBy   String?  @db.VarChar(255)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([category])
+  @@index([language])
+  @@index([isSystem])
+  @@index([isActive])
+  @@map("prompt_templates")
+}
+
+model AILanguage {
+  id          String   @id @default(uuid())
+  code        String   @unique @db.VarChar(10)
+  name        String   @db.VarChar(100)
+  nativeName  String   @db.VarChar(100)
+  isActive    Boolean  @default(true)
+  isSupported Boolean  @default(true)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([code])
+  @@index([isActive])
+  @@index([isSupported])
+  @@map("ai_languages")
+}
+
+// ============================================
+// SCRIPT EXECUTION ENGINE - Phase 3.2
+// ============================================
+
+model ScriptVersion {
+  id          String       @id @default(uuid())
+  scriptId    String
+  version     String       @db.VarChar(20)
+  status      ScriptStatus @default(DRAFT)
+  description String?      @db.Text
+  metadata    Json?
+  publishedAt DateTime?
+  publishedBy String?      @db.VarChar(255)
+  createdBy   String?      @db.VarChar(255)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  script      Script            @relation(fields: [scriptId], references: [id], onDelete: Cascade)
+  nodes       ScriptNode[]
+  branches    ScriptBranch[]
+  variables   ScriptVariable[]
+  executions  ScriptExecution[]
+
+  @@unique([scriptId, version])
+  @@index([scriptId])
+  @@index([status])
+  @@index([publishedAt])
+  @@map("script_versions")
+}
+
+enum ScriptStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model ScriptNode {
+  id            String   @id @default(uuid())
+  versionId     String
+  nodeId        String   @db.VarChar(100)
+  type          String   @db.VarChar(50)
+  name          String   @db.VarChar(255)
+  content       String?  @db.LongText
+  position      Json?
+  config        Json?
+  order         Int      @default(0)
+  isEntryPoint  Boolean  @default(false)
+  isExitPoint   Boolean  @default(false)
+  metadata      Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  version       ScriptVersion  @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  branchesFrom  ScriptBranch[] @relation("FromNode")
+  branchesTo    ScriptBranch[] @relation("ToNode")
+
+  @@unique([versionId, nodeId])
+  @@index([versionId])
+  @@index([nodeId])
+  @@index([type])
+  @@index([order])
+  @@map("script_nodes")
+}
+
+model ScriptBranch {
+  id          String   @id @default(uuid())
+  versionId   String
+  fromNodeId  String
+  toNodeId    String
+  condition   Json?
+  label       String?  @db.VarChar(255)
+  order       Int      @default(0)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  version     ScriptVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  fromNode    ScriptNode    @relation("FromNode", fields: [fromNodeId], references: [id], onDelete: Cascade)
+  toNode      ScriptNode    @relation("ToNode", fields: [toNodeId], references: [id], onDelete: Cascade)
+
+  @@index([versionId])
+  @@index([fromNodeId])
+  @@index([toNodeId])
+  @@map("script_branches")
+}
+
+model ScriptVariable {
+  id          String   @id @default(uuid())
+  versionId   String
+  name        String   @db.VarChar(100)
+  type        String   @db.VarChar(50)
+  defaultValue String? @db.Text
+  description String?  @db.Text
+  isRequired  Boolean  @default(false)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  version     ScriptVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@unique([versionId, name])
+  @@index([versionId])
+  @@index([name])
+  @@map("script_variables")
+}
+
+model ScriptExecution {
+  id            String   @id @default(uuid())
+  versionId     String
+  callId        String?
+  contactId     String?
+  currentNodeId String?  @db.VarChar(100)
+  state         Json?
+  variables     Json?
+  history       Json?
+  status        String   @db.VarChar(50)
+  startedAt     DateTime @default(now())
+  completedAt   DateTime?
+  metadata      Json?
+
+  version       ScriptVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@index([versionId])
+  @@index([callId])
+  @@index([contactId])
+  @@index([status])
+  @@index([startedAt])
+  @@map("script_executions")
+}
+
+// ============================================
+// AI MEMORY MANAGER - Phase 3.3
+// ============================================
+
+model ConversationMemory {
+  id              String   @id @default(uuid())
+  sessionId       String   @unique @db.VarChar(255)
+  companyId       String
+  campaignId      String?
+  contactId       String?
+  callId          String?
+  scriptId        String?
+  currentNodeId   String?  @db.VarChar(100)
+  currentIntent   String?  @db.VarChar(100)
+  currentLanguage String   @default("en") @db.VarChar(10)
+  conversationState Json?
+  sessionStartTime DateTime @default(now())
+  sessionEndTime   DateTime?
+  lastActivityTime DateTime @default(now())
+  isActive        Boolean  @default(true)
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  customerMemory  CustomerMemory?
+  history         MemoryHistory[]
+  snapshots       MemorySnapshot[]
+
+  @@index([sessionId])
+  @@index([companyId])
+  @@index([campaignId])
+  @@index([contactId])
+  @@index([callId])
+  @@index([isActive])
+  @@index([sessionStartTime])
+  @@index([lastActivityTime])
+  @@map("conversation_memory")
+}
+
+model CustomerMemory {
+  id                  String    @id @default(uuid())
+  conversationId      String    @unique
+  companyId           String
+  contactId           String?
+  customerName        String?   @db.VarChar(255)
+  phoneNumber         String?   @db.VarChar(50)
+  email               String?   @db.VarChar(255)
+  city                String?   @db.VarChar(100)
+  state               String?   @db.VarChar(100)
+  country             String?   @db.VarChar(100)
+  preferredLanguage   String    @default("en") @db.VarChar(10)
+  budget              String?   @db.VarChar(100)
+  propertyType        String?   @db.VarChar(100)
+  interests           Json?
+  previousInterests   Json?
+  leadStatus          LeadStatus @default(NEW)
+  qualification       Json?
+  previousSummary     String?   @db.Text
+  salesNotes          String?   @db.Text
+  customerPreferences Json?
+  lastConversationDate DateTime?
+  lastFollowupDate    DateTime?
+  nextFollowupDate    DateTime?
+  totalInteractions   Int       @default(1)
+  metadata            Json?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  conversation      ConversationMemory @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([contactId])
+  @@index([phoneNumber])
+  @@index([email])
+  @@index([leadStatus])
+  @@index([lastConversationDate])
+  @@index([nextFollowupDate])
+  @@map("customer_memory")
+}
+
+enum LeadStatus {
+  NEW
+  INTERESTED
+  NOT_INTERESTED
+  CALL_BACK_LATER
+  WRONG_NUMBER
+  BUSY
+  DO_NOT_CALL
+  QUALIFIED
+  CONVERTED
+  LOST
+}
+
+model SessionMemory {
+  id                    String   @id @default(uuid())
+  sessionId             String   @unique @db.VarChar(255)
+  companyId             String
+  greetingCompleted     Boolean  @default(false)
+  qualificationCompleted Boolean @default(false)
+  budgetCollected       Boolean  @default(false)
+  locationCollected     Boolean  @default(false)
+  projectSuggested      Boolean  @default(false)
+  closingCompleted      Boolean  @default(false)
+  conversationFinished  Boolean  @default(false)
+  currentStep           String?  @db.VarChar(100)
+  collectedData         Json?
+  conversationFlow      Json?
+  metadata              Json?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([sessionId])
+  @@index([companyId])
+  @@index([currentStep])
+  @@index([conversationFinished])
+  @@map("session_memory")
+}
+
+model MemorySnapshot {
+  id                String   @id @default(uuid())
+  conversationId    String
+  snapshotType      String   @db.VarChar(50)
+  snapshotData      Json
+  nodeId            String?  @db.VarChar(100)
+  intent            String?  @db.VarChar(100)
+  timestamp         DateTime @default(now())
+  metadata          Json?
+
+  conversation      ConversationMemory @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([snapshotType])
+  @@index([timestamp])
+  @@map("memory_snapshots")
+}
+
+model MemoryHistory {
+  id                String   @id @default(uuid())
+  conversationId    String
+  action            String   @db.VarChar(100)
+  entityType        String   @db.VarChar(100)
+  entityId          String?  @db.VarChar(255)
+  previousValue     Json?
+  newValue          Json?
+  changes           Json?
+  timestamp         DateTime @default(now())
+  metadata          Json?
+
+  conversation      ConversationMemory @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([action])
+  @@index([entityType])
+  @@index([timestamp])
+  @@map("memory_history")
+}
+
+model MemoryConfiguration {
+  id                    String   @id @default(uuid())
+  companyId             String   @unique
+  sessionTimeout        Int      @default(1800)
+  maxHistoryLength      Int      @default(100)
+  enableAutoSave        Boolean  @default(true)
+  autoSaveInterval      Int      @default(30)
+  retentionDays         Int      @default(90)
+  enableCompression     Boolean  @default(true)
+  compressionThreshold  Int      @default(1000)
+  enableEncryption      Boolean  @default(false)
+  settings              Json?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([companyId])
+  @@map("memory_configuration")
+}

@@ -1,0 +1,81 @@
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { APP_FILTER, APP_INTERCEPTOR, APP_GUARD } from '@nestjs/core';
+
+// Common
+import { PrismaModule } from './common/prisma/prisma.module';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+
+// Modules
+import { AuthModule } from './modules/auth/auth.module';
+import { UsersModule } from './modules/users/users.module';
+import { RolesModule } from './modules/roles/roles.module';
+import { PermissionsModule } from './modules/permissions/permissions.module';
+import { CompaniesModule } from './modules/companies/companies.module';
+import { CampaignsModule } from './modules/campaigns/campaigns.module';
+import { ContactsModule } from './modules/contacts/contacts.module';
+import { ScriptsModule } from './modules/scripts/scripts.module';
+import { PromptsModule } from './modules/prompts/prompts.module';
+import { KnowledgeBaseModule } from './modules/knowledge-base/knowledge-base.module';
+import { VoiceProfilesModule } from './modules/voice-profiles/voice-profiles.module';
+import { CallsModule } from './modules/calls/calls.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { SettingsModule } from './modules/settings/settings.module';
+import { ActivityLogsModule } from './modules/activity-logs/activity-logs.module';
+import { ReportsModule } from './modules/reports/reports.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { SystemHealthModule } from './modules/system-health/system-health.module';
+import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
+import { FileStorageModule } from './modules/file-storage/file-storage.module';
+import { ScriptEngineModule } from './modules/script-engine/script-engine.module';
+import { MemoryModule } from './modules/memory/memory.module';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: ['.env.local', '.env'],
+      cache: true,
+    }),
+    PrismaModule,
+    AuthModule,
+    UsersModule,
+    RolesModule,
+    PermissionsModule,
+    CompaniesModule,
+    CampaignsModule,
+    ContactsModule,
+    ScriptsModule,
+    PromptsModule,
+    KnowledgeBaseModule,
+    VoiceProfilesModule,
+    CallsModule,
+    AnalyticsModule,
+    SettingsModule,
+    ActivityLogsModule,
+    ReportsModule,
+    NotificationsModule,
+    SystemHealthModule,
+    AuditLogsModule,
+    FileStorageModule,
+    ScriptEngineModule,
+    MemoryModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_FILTER,
+      useClass: HttpExceptionFilter,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: LoggingInterceptor,
+    },
+  ],
+})
+export class AppModule {}
