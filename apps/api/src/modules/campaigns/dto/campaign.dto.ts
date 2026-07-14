@@ -9,7 +9,7 @@ import {
   IsArray,
   IsBoolean
 } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 
 export enum CampaignStatus {

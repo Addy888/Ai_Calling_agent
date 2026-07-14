@@ -1,5 +1,5 @@
 import { IsString, IsOptional, IsBoolean, IsUUID, MaxLength, IsEnum } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 
 export enum ScriptLanguage {

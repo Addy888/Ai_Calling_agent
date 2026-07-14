@@ -108,16 +108,47 @@ async function main() {
     { name: 'View Activity Logs', slug: 'activity-logs.view', module: 'activity-logs' },
 
     // Memory Management
-    { name: 'Read Memory', slug: 'memory:read', module: 'memory' },
-    { name: 'Create Memory', slug: 'memory:create', module: 'memory' },
-    { name: 'Update Memory', slug: 'memory:update', module: 'memory' },
-    { name: 'Delete Memory', slug: 'memory:delete', module: 'memory' },
+    { name: 'Read Memory Data', slug: 'memory.read', module: 'memory' },
+    { name: 'Write Memory Data', slug: 'memory.write', module: 'memory' },
+    { name: 'Create Memory Entry', slug: 'memory.create', module: 'memory' },
+    { name: 'Update Memory Entry', slug: 'memory.update', module: 'memory' },
+    { name: 'Delete Memory Entry', slug: 'memory.delete', module: 'memory' },
 
     // Knowledge Engine
-    { name: 'Read Knowledge', slug: 'knowledge:read', module: 'knowledge' },
-    { name: 'Create Knowledge', slug: 'knowledge:create', module: 'knowledge' },
-    { name: 'Update Knowledge', slug: 'knowledge:update', module: 'knowledge' },
-    { name: 'Delete Knowledge', slug: 'knowledge:delete', module: 'knowledge' },
+    { name: 'Read Knowledge Data', slug: 'knowledge.read', module: 'knowledge' },
+    { name: 'Write Knowledge Data', slug: 'knowledge.write', module: 'knowledge' },
+    { name: 'Create Knowledge Entry', slug: 'knowledge.create', module: 'knowledge' },
+    { name: 'Update Knowledge Entry', slug: 'knowledge.update', module: 'knowledge' },
+    { name: 'Delete Knowledge Entry', slug: 'knowledge.delete', module: 'knowledge' },
+
+    // Contacts (additional)
+    { name: 'Read Contacts Data', slug: 'contacts.read', module: 'contacts' },
+    { name: 'Write Contacts Data', slug: 'contacts.write', module: 'contacts' },
+
+    // Campaigns (additional)
+    { name: 'Read Campaigns Data', slug: 'campaigns.read', module: 'campaigns' },
+    { name: 'Write Campaigns Data', slug: 'campaigns.write', module: 'campaigns' },
+
+    // Scripts (additional)
+    { name: 'Read Scripts Data', slug: 'scripts.read', module: 'scripts' },
+    { name: 'Write Scripts Data', slug: 'scripts.write', module: 'scripts' },
+
+    // Prompts (additional)
+    { name: 'Read Prompts Data', slug: 'prompts.read', module: 'prompts' },
+    { name: 'Write Prompts Data', slug: 'prompts.write', module: 'prompts' },
+
+    // Analytics (additional)
+    { name: 'Read Analytics Data', slug: 'analytics.read', module: 'analytics' },
+
+    // Reports (additional)
+    { name: 'Read Reports Data', slug: 'reports.read', module: 'reports' },
+
+    // Activity Logs (additional)
+    { name: 'Read Activity Logs Data', slug: 'activity_logs.read', module: 'activity-logs' },
+
+    // Settings (additional)
+    { name: 'Read Settings Data', slug: 'settings.read', module: 'settings' },
+    { name: 'Write Settings Data', slug: 'settings.write', module: 'settings' },
   ];
 
   const createdPermissions = await Promise.all(

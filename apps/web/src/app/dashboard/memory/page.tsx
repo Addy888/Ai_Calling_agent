@@ -12,9 +12,7 @@ import {
   MessageSquare, 
   Clock, 
   Search,
-  Filter,
   TrendingUp,
-  TrendingDown,
   Activity
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
