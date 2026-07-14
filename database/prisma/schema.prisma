@@ -2722,3 +2722,520 @@ model EvaluationConfiguration {
   @@index([companyId])
   @@map("evaluation_configurations")
 }
+
+// ============================================
+// AI TRAINING & VALIDATION PLATFORM - Phase 3.8
+// ============================================
+
+model TrainingDataset {
+  id                    String              @id @default(uuid())
+  companyId             String
+  name                  String              @db.VarChar(255)
+  description           String?             @db.Text
+  datasetType           DatasetType
+  category              String?             @db.VarChar(100)
+  status                DatasetStatus       @default(DRAFT)
+  version               String              @default("1.0.0") @db.VarChar(20)
+  recordCount           Int                 @default(0)
+  validRecordCount      Int                 @default(0)
+  invalidRecordCount    Int                 @default(0)
+  duplicateCount        Int                 @default(0)
+  totalSize             BigInt              @default(0)
+  language              String              @default("en") @db.VarChar(10)
+  tags                  Json?
+  metadata              Json?
+  isActive              Boolean             @default(true)
+  lastValidatedAt       DateTime?
+  publishedAt           DateTime?
+  publishedBy           String?             @db.VarChar(255)
+  createdBy             String?             @db.VarChar(255)
+  updatedBy             String?             @db.VarChar(255)
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  records               TrainingDatasetRecord[]
+  versions              DatasetVersion[]
+  validations           DatasetValidation[]
+  coverage              DatasetCoverage[]
+  trainingJobs          TrainingJob[]
+
+  @@index([companyId])
+  @@index([datasetType])
+  @@index([category])
+  @@index([status])
+  @@index([version])
+  @@index([isActive])
+  @@index([createdAt])
+  @@index([publishedAt])
+  @@map("training_datasets")
+}
+
+enum DatasetType {
+  CONVERSATION
+  KNOWLEDGE
+  PROMPT
+  SCRIPT
+  FAQ
+  BUSINESS_RULE
+  EVALUATION
+  INTENT
+  ENTITY
+  RESPONSE
+}
+
+enum DatasetStatus {
+  DRAFT
+  VALIDATING
+  VALIDATED
+  PUBLISHED
+  ARCHIVED
+}
+
+model TrainingDatasetRecord {
+  id                    String              @id @default(uuid())
+  datasetId             String
+  companyId             String
+  recordType            String              @db.VarChar(100)
+  recordData            Json
+  sourceType            String?             @db.VarChar(100)
+  sourceId              String?             @db.VarChar(255)
+  sourceReference       String?             @db.VarChar(500)
+  language              String              @default("en") @db.VarChar(10)
+  tags                  Json?
+  isValid               Boolean             @default(true)
+  isDuplicate           Boolean             @default(false)
+  validationIssues      Json?
+  duplicateOf           String?             @db.VarChar(255)
+  quality               String?             @db.VarChar(50)
+  metadata              Json?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  dataset               TrainingDataset     @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+
+  @@index([datasetId])
+  @@index([companyId])
+  @@index([recordType])
+  @@index([isValid])
+  @@index([isDuplicate])
+  @@index([sourceType])
+  @@index([sourceId])
+  @@index([createdAt])
+  @@map("training_dataset_records")
+}
+
+model DatasetVersion {
+  id                    String              @id @default(uuid())
+  datasetId             String
+  companyId             String
+  version               String              @db.VarChar(20)
+  description           String?             @db.Text
+  status                DatasetStatus       @default(DRAFT)
+  recordCount           Int                 @default(0)
+  changes               Json?
+  comparisonToPrevious  Json?
+  publishedAt           DateTime?
+  publishedBy           String?             @db.VarChar(255)
+  metadata              Json?
+  createdAt             DateTime            @default(now())
+
+  dataset               TrainingDataset     @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+
+  @@unique([datasetId, version])
+  @@index([datasetId])
+  @@index([companyId])
+  @@index([version])
+  @@index([status])
+  @@index([publishedAt])
+  @@index([createdAt])
+  @@map("dataset_versions")
+}
+
+model DatasetValidation {
+  id                    String              @id @default(uuid())
+  datasetId             String
+  companyId             String
+  validationType        ValidationType
+  status                ValidationStatus    @default(PENDING)
+  totalRecords          Int                 @default(0)
+  validRecords          Int                 @default(0)
+  invalidRecords        Int                 @default(0)
+  duplicateRecords      Int                 @default(0)
+  issues                Json?
+  errors                Json?
+  warnings              Json?
+  recommendations       Json?
+  validationScore       Float?
+  startedAt             DateTime            @default(now())
+  completedAt           DateTime?
+  executionTime         Int?
+  metadata              Json?
+
+  dataset               TrainingDataset     @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+
+  @@index([datasetId])
+  @@index([companyId])
+  @@index([validationType])
+  @@index([status])
+  @@index([startedAt])
+  @@index([completedAt])
+  @@map("dataset_validations")
+}
+
+enum ValidationType {
+  STRUCTURE
+  CONTENT
+  DUPLICATE
+  REFERENCE
+  QUALITY
+  COVERAGE
+  CONSISTENCY
+  COMPREHENSIVE
+}
+
+enum ValidationStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+model DatasetCoverage {
+  id                    String              @id @default(uuid())
+  datasetId             String
+  companyId             String
+  coverageType          CoverageType
+  category              String              @db.VarChar(100)
+  expectedCount         Int                 @default(0)
+  actualCount           Int                 @default(0)
+  coveragePercentage    Float               @default(0.0)
+  missingItems          Json?
+  additionalItems       Json?
+  metadata              Json?
+  calculatedAt          DateTime            @default(now())
+
+  dataset               TrainingDataset     @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+
+  @@index([datasetId])
+  @@index([companyId])
+  @@index([coverageType])
+  @@index([category])
+  @@index([coveragePercentage])
+  @@index([calculatedAt])
+  @@map("dataset_coverage")
+}
+
+enum CoverageType {
+  KNOWLEDGE
+  PROMPT
+  SCRIPT
+  CONVERSATION
+  BUSINESS_RULE
+  INTENT
+  ENTITY
+  FAQ
+  LANGUAGE
+  OVERALL
+}
+
+model TrainingJob {
+  id                    String              @id @default(uuid())
+  datasetId             String?
+  companyId             String
+  jobName               String              @db.VarChar(255)
+  jobType               TrainingJobType
+  status                TrainingJobStatus   @default(PENDING)
+  configuration         Json
+  datasets              Json?
+  progress              Float               @default(0.0)
+  currentStep           String?             @db.VarChar(255)
+  totalSteps            Int                 @default(0)
+  completedSteps        Int                 @default(0)
+  startedAt             DateTime?
+  completedAt           DateTime?
+  estimatedTimeRemaining Int?
+  errorMessage          String?             @db.Text
+  result                Json?
+  metrics               Json?
+  metadata              Json?
+  createdBy             String?             @db.VarChar(255)
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  dataset               TrainingDataset?    @relation(fields: [datasetId], references: [id], onDelete: SetNull)
+  versions              TrainingVersion[]
+
+  @@index([datasetId])
+  @@index([companyId])
+  @@index([jobType])
+  @@index([status])
+  @@index([startedAt])
+  @@index([completedAt])
+  @@index([createdAt])
+  @@map("training_jobs")
+}
+
+enum TrainingJobType {
+  DATASET_VALIDATION
+  DATASET_PREPARATION
+  KNOWLEDGE_INDEXING
+  PROMPT_OPTIMIZATION
+  SCRIPT_VALIDATION
+  INTENT_TRAINING
+  ENTITY_EXTRACTION
+  EVALUATION_RUN
+  COMPREHENSIVE
+}
+
+enum TrainingJobStatus {
+  PENDING
+  QUEUED
+  RUNNING
+  PAUSED
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model TrainingVersion {
+  id                    String              @id @default(uuid())
+  trainingJobId         String?
+  companyId             String
+  versionName           String              @db.VarChar(255)
+  version               String              @db.VarChar(20)
+  status                TrainingVersionStatus @default(DRAFT)
+  description           String?             @db.Text
+  baselineVersion       String?             @db.VarChar(20)
+  datasetVersions       Json
+  configuration         Json
+  readinessScore        Float?
+  metrics               Json?
+  changes               Json?
+  comparisonToBaseline  Json?
+  isActive              Boolean             @default(false)
+  isCurrent             Boolean             @default(false)
+  publishedAt           DateTime?
+  publishedBy           String?             @db.VarChar(255)
+  metadata              Json?
+  createdBy             String?             @db.VarChar(255)
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  trainingJob           TrainingJob?        @relation(fields: [trainingJobId], references: [id], onDelete: SetNull)
+  readinessReport       ReadinessReport?
+
+  @@unique([companyId, version])
+  @@index([trainingJobId])
+  @@index([companyId])
+  @@index([version])
+  @@index([status])
+  @@index([isActive])
+  @@index([isCurrent])
+  @@index([publishedAt])
+  @@index([createdAt])
+  @@map("training_versions")
+}
+
+enum TrainingVersionStatus {
+  DRAFT
+  VALIDATING
+  VALIDATED
+  TESTING
+  APPROVED
+  PUBLISHED
+  ARCHIVED
+}
+
+model ReadinessReport {
+  id                        String              @id @default(uuid())
+  trainingVersionId         String              @unique
+  companyId                 String
+  overallReadiness          Float
+  knowledgeReadiness        Float
+  conversationReadiness     Float
+  promptReadiness           Float
+  scriptReadiness           Float
+  decisionReadiness         Float
+  evaluationReadiness       Float
+  knowledgeCoverage         Float
+  conversationCoverage      Float
+  promptCoverage            Float
+  scriptCoverage            Float
+  businessRuleCoverage      Float
+  dataQualityScore          Float
+  validationScore           Float
+  consistencyScore          Float
+  isReady                   Boolean             @default(false)
+  readinessThreshold        Float               @default(85.0)
+  blockers                  Json?
+  warnings                  Json?
+  recommendations           Json?
+  missingData               Json?
+  dataQualityIssues         Json?
+  coverageGaps              Json?
+  readinessBreakdown        Json
+  metadata                  Json?
+  calculatedAt              DateTime            @default(now())
+  createdAt                 DateTime            @default(now())
+
+  trainingVersion           TrainingVersion     @relation(fields: [trainingVersionId], references: [id], onDelete: Cascade)
+
+  @@index([trainingVersionId])
+  @@index([companyId])
+  @@index([overallReadiness])
+  @@index([isReady])
+  @@index([calculatedAt])
+  @@index([createdAt])
+  @@map("readiness_reports")
+}
+
+model DatasetMetrics {
+  id                    String              @id @default(uuid())
+  companyId             String
+  datasetId             String?
+  date                  DateTime            @db.Date
+  datasetType           DatasetType
+  metricName            String              @db.VarChar(100)
+  metricValue           Float
+  recordCount           Int                 @default(0)
+  qualityScore          Float?
+  validationScore       Float?
+  coveragePercentage    Float?
+  duplicatePercentage   Float?
+  metadata              Json?
+  createdAt             DateTime            @default(now())
+
+  @@index([companyId])
+  @@index([datasetId])
+  @@index([date])
+  @@index([datasetType])
+  @@index([metricName])
+  @@index([createdAt])
+  @@map("dataset_metrics")
+}
+
+model TrainingHistory {
+  id                    String              @id @default(uuid())
+  companyId             String
+  date                  DateTime            @db.Date
+  totalTrainingJobs     Int                 @default(0)
+  completedJobs         Int                 @default(0)
+  failedJobs            Int                 @default(0)
+  totalDatasets         Int                 @default(0)
+  totalRecords          BigInt              @default(0)
+  averageReadiness      Float?
+  averageQuality        Float?
+  averageCoverage       Float?
+  topIssues             Json?
+  improvements          Json?
+  metadata              Json?
+  createdAt             DateTime            @default(now())
+
+  @@unique([companyId, date])
+  @@index([companyId])
+  @@index([date])
+  @@index([averageReadiness])
+  @@index([createdAt])
+  @@map("training_history")
+}
+
+model DatasetQualityCheck {
+  id                    String              @id @default(uuid())
+  datasetId             String
+  companyId             String
+  checkType             QualityCheckType
+  status                String              @db.VarChar(50)
+  issuesFound           Int                 @default(0)
+  issueDetails          Json?
+  qualityScore          Float
+  recommendations       Json?
+  autoFixable           Boolean             @default(false)
+  fixesApplied          Int                 @default(0)
+  checkedAt             DateTime            @default(now())
+  metadata              Json?
+
+  @@index([datasetId])
+  @@index([companyId])
+  @@index([checkType])
+  @@index([status])
+  @@index([qualityScore])
+  @@index([checkedAt])
+  @@map("dataset_quality_checks")
+}
+
+enum QualityCheckType {
+  DUPLICATE_DETECTION
+  FORMAT_VALIDATION
+  CONTENT_VALIDATION
+  REFERENCE_INTEGRITY
+  CONSISTENCY_CHECK
+  COMPLETENESS_CHECK
+  ACCURACY_VALIDATION
+}
+
+model TrainingConfiguration {
+  id                        String              @id @default(uuid())
+  companyId                 String              @unique
+  enableAutoValidation      Boolean             @default(true)
+  enableAutoIndexing        Boolean             @default(true)
+  enableQualityChecks       Boolean             @default(true)
+  minimumQualityScore       Float               @default(80.0)
+  minimumCoveragePercentage Float               @default(85.0)
+  readinessThreshold        Float               @default(85.0)
+  maxDuplicatePercentage    Float               @default(5.0)
+  enableVersioning          Boolean             @default(true)
+  retentionDays             Int                 @default(365)
+  notifyOnCompletion        Boolean             @default(true)
+  notifyOnFailure           Boolean             @default(true)
+  settings                  Json?
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+
+  @@index([companyId])
+  @@map("training_configurations")
+}
+
+model AIReleaseVersion {
+  id                        String              @id @default(uuid())
+  companyId                 String
+  releaseVersion            String              @db.VarChar(20)
+  releaseName               String              @db.VarChar(255)
+  description               String?             @db.Text
+  status                    ReleaseStatus       @default(DRAFT)
+  trainingVersionId         String?
+  readinessScore            Float?
+  includedDatasets          Json
+  includedComponents        Json
+  deploymentConfig          Json?
+  releaseNotes              String?             @db.LongText
+  changelog                 Json?
+  isProduction              Boolean             @default(false)
+  isActive                  Boolean             @default(false)
+  releasedAt                DateTime?
+  releasedBy                String?             @db.VarChar(255)
+  rollbackVersion           String?             @db.VarChar(20)
+  metadata                  Json?
+  createdBy                 String?             @db.VarChar(255)
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+
+  @@unique([companyId, releaseVersion])
+  @@index([companyId])
+  @@index([releaseVersion])
+  @@index([status])
+  @@index([isProduction])
+  @@index([isActive])
+  @@index([releasedAt])
+  @@index([createdAt])
+  @@map("ai_release_versions")
+}
+
+enum ReleaseStatus {
+  DRAFT
+  TESTING
+  STAGING
+  APPROVED
+  DEPLOYED
+  ROLLED_BACK
+  ARCHIVED
+}

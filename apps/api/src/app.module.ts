@@ -35,6 +35,9 @@ import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 import { DecisionEngineModule } from './modules/decision-engine/decision-engine.module';
 import { ConversationManagerModule } from './modules/conversation-manager/conversation-manager.module';
 import { EvaluationModule } from './modules/evaluation/evaluation.module';
+import { TrainingManagerModule } from './modules/training-manager/training-manager.module';
+import { DatasetBuilderModule } from './modules/dataset-builder/dataset-builder.module';
+import { ValidationEngineModule } from './modules/validation-engine/validation-engine.module';
 
 @Module({
   imports: [
@@ -70,6 +73,9 @@ import { EvaluationModule } from './modules/evaluation/evaluation.module';
     DecisionEngineModule,
     ConversationManagerModule,
     EvaluationModule,
+    TrainingManagerModule,
+    DatasetBuilderModule,
+    ValidationEngineModule,
   ],
   providers: [
     {
