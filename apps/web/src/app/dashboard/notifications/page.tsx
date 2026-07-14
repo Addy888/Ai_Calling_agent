@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Bell, Check, Trash2, AlertCircle, CheckCircle, Info, AlertTriangle } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { Spinner } from '@/components/ui/spinner';
-import { useToast } from '@/components/ui/toast';
+import { useToast } from '@/components/ui/use-toast';
 
 interface Notification {
   id: string;

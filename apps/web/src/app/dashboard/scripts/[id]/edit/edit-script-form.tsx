@@ -15,7 +15,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Eye, Save } from 'lucide-react';
 import { scriptApi } from '@/lib/api';
 import { Script, UpdateScriptDto, ScriptLanguage } from '@/types';
-import { toast } from '@/components/ui/toast';
+import { toast } from '@/components/ui/use-toast';
 
 const scriptSchema = z.object({
   name: z.string().min(1, 'Script name is required').max(255, 'Script name is too long'),
@@ -56,10 +56,10 @@ export function EditScriptForm({ script, onSuccess }: EditScriptFormProps) {
     try {
       setLoading(true);
       await scriptApi.update(script.id, data);
-      toast.success('Script updated successfully');
+      toast({ title: 'Success', description: 'Script updated successfully' });
       onSuccess?.();
     } catch (error) {
-      toast.error('Failed to update script');
+      toast({ title: 'Error', description: 'Failed to update script', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -71,7 +71,7 @@ export function EditScriptForm({ script, onSuccess }: EditScriptFormProps) {
       setPreviewContent(response.data.data.preview);
       setActiveTab('preview');
     } catch (error) {
-      toast.error('Failed to generate preview');
+      toast({ title: 'Error', description: 'Failed to generate preview', variant: 'destructive' });
     }
   };
 

@@ -21,7 +21,7 @@ import {
 import { scriptApi } from '@/lib/api';
 import { Script, ScriptLanguage } from '@/types';
 import { formatDate, formatDateTime } from '@/lib/utils';
-import { toast } from '@/components/ui/toast';
+import { toast } from '@/components/ui/use-toast';
 
 const languageLabels: Record<ScriptLanguage, string> = {
   [ScriptLanguage.ENGLISH]: 'English',
@@ -44,7 +44,7 @@ export default function ScriptDetailsPage() {
       const response = await scriptApi.getById(scriptId);
       setScript(response.data.data);
     } catch (error) {
-      toast.error('Failed to load script details');
+      toast({ title: 'Error', description: 'Failed to load script details', variant: 'destructive' });
       router.push('/dashboard/scripts');
     } finally {
       setLoading(false);
@@ -62,17 +62,17 @@ export default function ScriptDetailsPage() {
       const response = await scriptApi.preview(scriptId);
       setPreviewContent(response.data.data.preview);
     } catch (error) {
-      toast.error('Failed to generate preview');
+      toast({ title: 'Error', description: 'Failed to generate preview', variant: 'destructive' });
     }
   };
 
   const handleDuplicate = async () => {
     try {
       await scriptApi.duplicate(scriptId, `${script?.name} (Copy)`);
-      toast.success('Script duplicated successfully');
+      toast({ title: 'Success', description: 'Script duplicated successfully' });
       router.push('/dashboard/scripts');
     } catch (error) {
-      toast.error('Failed to duplicate script');
+      toast({ title: 'Error', description: 'Failed to duplicate script', variant: 'destructive' });
     }
   };
 
@@ -80,19 +80,19 @@ export default function ScriptDetailsPage() {
     try {
       await scriptApi.restore(scriptId);
       loadScript();
-      toast.success('Script restored successfully');
+      toast({ title: 'Success', description: 'Script restored successfully' });
     } catch (error) {
-      toast.error('Failed to restore script');
+      toast({ title: 'Error', description: 'Failed to restore script', variant: 'destructive' });
     }
   };
 
   const handleDelete = async () => {
     try {
       await scriptApi.delete(scriptId);
-      toast.success('Script deleted successfully');
+      toast({ title: 'Success', description: 'Script deleted successfully' });
       router.push('/dashboard/scripts');
     } catch (error) {
-      toast.error('Failed to delete script');
+      toast({ title: 'Error', description: 'Failed to delete script', variant: 'destructive' });
     }
   };
 

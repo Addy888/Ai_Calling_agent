@@ -14,7 +14,7 @@ import { promptApi } from '@/lib/api';
 import { Prompt, PromptStatus, PromptFilterDto } from '@/types';
 import { formatDate, formatDateTime } from '@/lib/utils';
 import { CreatePromptForm } from './create-prompt-form';
-import { toast } from '@/components/ui/toast';
+import { toast } from '@/components/ui/use-toast';
 
 const statusColors: Record<PromptStatus, string> = {
   [PromptStatus.DRAFT]: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300',
@@ -50,7 +50,7 @@ export default function PromptsPage() {
         totalPages: response.data.data.meta.totalPages,
       }));
     } catch (error) {
-      toast.error('Failed to load prompts');
+      toast({ title: 'Error', description: 'Failed to load prompts', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -64,9 +64,9 @@ export default function PromptsPage() {
     try {
       await promptApi.duplicate(id, `${name} (Copy)`);
       loadPrompts();
-      toast.success('Prompt duplicated successfully');
+      toast({ title: 'Success', description: 'Prompt duplicated successfully' });
     } catch (error) {
-      toast.error('Failed to duplicate prompt');
+      toast({ title: 'Error', description: 'Failed to duplicate prompt', variant: 'destructive' });
     }
   };
 
@@ -74,9 +74,9 @@ export default function PromptsPage() {
     try {
       await promptApi.updateStatus(id, status);
       loadPrompts();
-      toast.success('Prompt status updated successfully');
+      toast({ title: 'Success', description: 'Prompt status updated successfully' });
     } catch (error) {
-      toast.error('Failed to update prompt status');
+      toast({ title: 'Error', description: 'Failed to update prompt status', variant: 'destructive' });
     }
   };
 
@@ -84,9 +84,9 @@ export default function PromptsPage() {
     try {
       await promptApi.restore(id);
       loadPrompts();
-      toast.success('Prompt restored successfully');
+      toast({ title: 'Success', description: 'Prompt restored successfully' });
     } catch (error) {
-      toast.error('Failed to restore prompt');
+      toast({ title: 'Error', description: 'Failed to restore prompt', variant: 'destructive' });
     }
   };
 
@@ -94,9 +94,9 @@ export default function PromptsPage() {
     try {
       await promptApi.delete(id);
       loadPrompts();
-      toast.success('Prompt deleted successfully');
+      toast({ title: 'Success', description: 'Prompt deleted successfully' });
     } catch (error) {
-      toast.error('Failed to delete prompt');
+      toast({ title: 'Error', description: 'Failed to delete prompt', variant: 'destructive' });
     }
   };
 

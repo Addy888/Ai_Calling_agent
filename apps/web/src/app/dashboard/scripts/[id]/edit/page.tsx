@@ -8,7 +8,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { ArrowLeft } from 'lucide-react';
 import { scriptApi } from '@/lib/api';
 import { Script } from '@/types';
-import { toast } from '@/components/ui/toast';
+import { toast } from '@/components/ui/use-toast';
 import { EditScriptForm } from './edit-script-form';
 
 export default function EditScriptPage() {
@@ -25,7 +25,7 @@ export default function EditScriptPage() {
       const response = await scriptApi.getById(scriptId);
       setScript(response.data.data);
     } catch (error) {
-      toast.error('Failed to load script details');
+      toast({ title: 'Error', description: 'Failed to load script details', variant: 'destructive' });
       router.push('/dashboard/scripts');
     } finally {
       setLoading(false);

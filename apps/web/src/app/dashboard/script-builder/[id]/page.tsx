@@ -19,7 +19,7 @@ import {
   GitBranch,
   Variable
 } from 'lucide-react';
-import { useToast } from '@/components/ui/toast';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function ScriptEditorPage() {
   const params = useParams();

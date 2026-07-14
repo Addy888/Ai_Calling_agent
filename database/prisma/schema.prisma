@@ -2374,3 +2374,351 @@ model ConversationAnalytics {
   @@index([createdAt])
   @@map("conversation_analytics")
 }
+
+// ============================================
+// AI EVALUATION & QUALITY ASSURANCE - Phase 3.7
+// ============================================
+
+model EvaluationReport {
+  id                        String              @id @default(uuid())
+  conversationId            String              @unique
+  sessionId                 String
+  companyId                 String
+  overallScore              Float
+  conversationScore         Float
+  scriptComplianceScore     Float
+  knowledgeAccuracyScore    Float
+  decisionAccuracyScore     Float
+  leadQualityScore          Float
+  memoryUsageScore          Float
+  businessRuleScore         Float
+  safetyScore               Float
+  confidenceScore           Float
+  evaluationStatus          EvaluationStatus    @default(COMPLETED)
+  issues                    Json?
+  recommendations           Json?
+  metadata                  Json?
+  evaluatedAt               DateTime            @default(now())
+  createdAt                 DateTime            @default(now())
+
+  conversationScoring       ConversationScoring?
+  scriptEvaluation          ScriptEvaluation?
+  knowledgeEvaluation       KnowledgeEvaluation?
+  decisionEvaluation        DecisionEvaluation?
+  leadEvaluation            LeadEvaluation?
+  memoryEvaluation          MemoryEvaluation?
+  businessRuleEvaluation    BusinessRuleEvaluation?
+  safetyEvaluation          SafetyEvaluation?
+  confidenceMetrics         ConfidenceMetrics?
+
+  @@index([conversationId])
+  @@index([sessionId])
+  @@index([companyId])
+  @@index([overallScore])
+  @@index([evaluationStatus])
+  @@index([evaluatedAt])
+  @@index([createdAt])
+  @@map("evaluation_reports")
+}
+
+enum EvaluationStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+model ConversationScoring {
+  id                        String   @id @default(uuid())
+  reportId                  String   @unique
+  companyId                 String
+  greetingScore             Float
+  conversationFlowScore     Float
+  questionQualityScore      Float
+  answerRelevanceScore      Float
+  closingQualityScore       Float
+  customerExperienceScore   Float
+  overallScore              Float
+  issues                    Json?
+  strengths                 Json?
+  weaknesses                Json?
+  metadata                  Json?
+  createdAt                 DateTime @default(now())
+
+  report                    EvaluationReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@index([companyId])
+  @@index([overallScore])
+  @@index([createdAt])
+  @@map("conversation_scoring")
+}
+
+model ScriptEvaluation {
+  id                        String   @id @default(uuid())
+  reportId                  String   @unique
+  companyId                 String
+  scriptId                  String?
+  correctScriptUsed         Boolean
+  correctBranchFollowed     Boolean
+  missingSteps              Json?
+  invalidSteps              Json?
+  ruleViolations            Json?
+  complianceScore           Float
+  issues                    Json?
+  metadata                  Json?
+  createdAt                 DateTime @default(now())
+
+  report                    EvaluationReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@index([companyId])
+  @@index([scriptId])
+  @@index([complianceScore])
+  @@index([createdAt])
+  @@map("script_evaluations")
+}
+
+model KnowledgeEvaluation {
+  id                        String   @id @default(uuid())
+  reportId                  String   @unique
+  companyId                 String
+  knowledgeRetrieved        Int      @default(0)
+  relevantKnowledge         Int      @default(0)
+  irrelevantKnowledge       Int      @default(0)
+  missingKnowledge          Int      @default(0)
+  invalidKnowledgeUsage     Int      @default(0)
+  averageConfidence         Float?
+  accuracyScore             Float
+  relevanceScore            Float
+  overallScore              Float
+  issues                    Json?
+  knowledgeGaps             Json?
+  metadata                  Json?
+  createdAt                 DateTime @default(now())
+
+  report                    EvaluationReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@index([companyId])
+  @@index([accuracyScore])
+  @@index([overallScore])
+  @@index([createdAt])
+  @@map("knowledge_evaluations")
+}
+
+model DecisionEvaluation {
+  id                        String   @id @default(uuid())
+  reportId                  String   @unique
+  companyId                 String
+  totalDecisions            Int      @default(0)
+  correctIntents            Int      @default(0)
+  incorrectIntents          Int      @default(0)
+  correctEntities           Int      @default(0)
+  incorrectEntities         Int      @default(0)
+  correctActions            Int      @default(0)
+  incorrectActions          Int      @default(0)
+  fallbacksUsed             Int      @default(0)
+  escalationsTriggered      Int      @default(0)
+  intentAccuracy            Float
+  entityAccuracy            Float
+  actionAccuracy            Float
+  overallAccuracy           Float
+  issues                    Json?
+  metadata                  Json?
+  createdAt                 DateTime @default(now())
+
+  report                    EvaluationReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@index([companyId])
+  @@index([intentAccuracy])
+  @@index([overallAccuracy])
+  @@index([createdAt])
+  @@map("decision_evaluations")
+}
+
+model LeadEvaluation {
+  id                        String              @id @default(uuid())
+  reportId                  String              @unique
+  companyId                 String
+  leadCategory              LeadCategory
+  expectedCategory          LeadCategory?
+  qualificationAccuracy     Float
+  categoryConfidence        Float
+  qualificationFactors      Json?
+  missingInformation        Json?
+  contradictions            Json?
+  overallScore              Float
+  issues                    Json?
+  metadata                  Json?
+  createdAt                 DateTime            @default(now())
+
+  report                    EvaluationReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@index([companyId])
+  @@index([leadCategory])
+  @@index([qualificationAccuracy])
+  @@index([overallScore])
+  @@index([createdAt])
+  @@map("lead_evaluations")
+}
+
+enum LeadCategory {
+  HOT
+  WARM
+  COLD
+  INTERESTED
+  NOT_INTERESTED
+  CALLBACK
+  WRONG_NUMBER
+  DO_NOT_CALL
+}
+
+model MemoryEvaluation {
+  id                        String   @id @default(uuid())
+  reportId                  String   @unique
+  companyId                 String
+  contextRetentionScore     Float
+  previousAnswersScore      Float
+  sessionMemoryScore        Float
+  continuityScore           Float
+  missingContext            Json?
+  contextErrors             Json?
+  overallScore              Float
+  issues                    Json?
+  metadata                  Json?
+  createdAt                 DateTime @default(now())
+
+  report                    EvaluationReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@index([companyId])
+  @@index([overallScore])
+  @@index([createdAt])
+  @@map("memory_evaluations")
+}
+
+model BusinessRuleEvaluation {
+  id                        String   @id @default(uuid())
+  reportId                  String   @unique
+  companyId                 String
+  companyPolicyScore        Float
+  campaignRuleScore         Float
+  promptRuleScore           Float
+  scriptRuleScore           Float
+  knowledgeRuleScore        Float
+  permissionRuleScore       Float
+  violations                Json?
+  overallScore              Float
+  issues                    Json?
+  metadata                  Json?
+  createdAt                 DateTime @default(now())
+
+  report                    EvaluationReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@index([companyId])
+  @@index([overallScore])
+  @@index([createdAt])
+  @@map("business_rule_evaluations")
+}
+
+model SafetyEvaluation {
+  id                        String   @id @default(uuid())
+  reportId                  String   @unique
+  companyId                 String
+  unsafeResponses           Int      @default(0)
+  hallucinationRisk         Float
+  policyViolations          Int      @default(0)
+  missingInformation        Int      @default(0)
+  invalidDecisions          Int      @default(0)
+  lowConfidenceCount        Int      @default(0)
+  safetyScore               Float
+  issues                    Json?
+  risks                     Json?
+  metadata                  Json?
+  createdAt                 DateTime @default(now())
+
+  report                    EvaluationReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@index([companyId])
+  @@index([safetyScore])
+  @@index([hallucinationRisk])
+  @@index([createdAt])
+  @@map("safety_evaluations")
+}
+
+model ConfidenceMetrics {
+  id                        String   @id @default(uuid())
+  reportId                  String   @unique
+  companyId                 String
+  intentConfidence          Float
+  knowledgeConfidence       Float
+  decisionConfidence        Float
+  conversationConfidence    Float
+  overallConfidence         Float
+  lowConfidencePoints       Json?
+  confidenceDistribution    Json?
+  metadata                  Json?
+  createdAt                 DateTime @default(now())
+
+  report                    EvaluationReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@index([companyId])
+  @@index([overallConfidence])
+  @@index([createdAt])
+  @@map("confidence_metrics")
+}
+
+model EvaluationHistory {
+  id                        String   @id @default(uuid())
+  companyId                 String
+  date                      DateTime @db.Date
+  totalEvaluations          Int      @default(0)
+  averageScore              Float
+  averageConversationScore  Float
+  averageScriptScore        Float
+  averageKnowledgeScore     Float
+  averageDecisionScore      Float
+  averageLeadScore          Float
+  averageSafetyScore        Float
+  averageConfidence         Float
+  topIssues                 Json?
+  commonFailures            Json?
+  metadata                  Json?
+  createdAt                 DateTime @default(now())
+
+  @@unique([companyId, date])
+  @@index([companyId])
+  @@index([date])
+  @@index([averageScore])
+  @@index([createdAt])
+  @@map("evaluation_history")
+}
+
+model EvaluationConfiguration {
+  id                        String   @id @default(uuid())
+  companyId                 String   @unique
+  enableAutoEvaluation      Boolean  @default(true)
+  minimumScoreThreshold     Float    @default(70.0)
+  hallucinationThreshold    Float    @default(0.3)
+  confidenceThreshold       Float    @default(0.7)
+  scriptComplianceWeight    Float    @default(0.15)
+  knowledgeAccuracyWeight   Float    @default(0.20)
+  decisionAccuracyWeight    Float    @default(0.20)
+  conversationQualityWeight Float    @default(0.15)
+  leadQualityWeight         Float    @default(0.10)
+  safetyWeight              Float    @default(0.10)
+  businessRuleWeight        Float    @default(0.05)
+  memoryWeight              Float    @default(0.05)
+  settings                  Json?
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  @@index([companyId])
+  @@map("evaluation_configurations")
+}

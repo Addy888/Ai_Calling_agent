@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Save, Building2, Bell, Shield, Globe, Palette, Users, Lock, Activity, HeartPulse, ArrowRight } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { Spinner } from '@/components/ui/spinner';
-import { useToast } from '@/components/ui/toast';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true);

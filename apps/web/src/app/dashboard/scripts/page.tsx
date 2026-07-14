@@ -14,7 +14,7 @@ import { scriptApi } from '@/lib/api';
 import { Script, ScriptLanguage, ScriptFilterDto } from '@/types';
 import { formatDate, formatDateTime } from '@/lib/utils';
 import { CreateScriptForm } from './create-script-form';
-import { toast } from '@/components/ui/toast';
+import { toast } from '@/components/ui/use-toast';
 
 const languageLabels: Record<ScriptLanguage, string> = {
   [ScriptLanguage.ENGLISH]: 'English',
@@ -50,7 +50,7 @@ export default function ScriptsPage() {
         totalPages: response.data.data.meta.totalPages,
       }));
     } catch (error) {
-      toast.error('Failed to load scripts');
+      toast({ title: 'Error', description: 'Failed to load scripts', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -64,9 +64,9 @@ export default function ScriptsPage() {
     try {
       await scriptApi.duplicate(id, `${name} (Copy)`);
       loadScripts();
-      toast.success('Script duplicated successfully');
+      toast({ title: 'Success', description: 'Script duplicated successfully' });
     } catch (error) {
-      toast.error('Failed to duplicate script');
+      toast({ title: 'Error', description: 'Failed to duplicate script', variant: 'destructive' });
     }
   };
 
@@ -74,9 +74,9 @@ export default function ScriptsPage() {
     try {
       await scriptApi.restore(id);
       loadScripts();
-      toast.success('Script restored successfully');
+      toast({ title: 'Success', description: 'Script restored successfully' });
     } catch (error) {
-      toast.error('Failed to restore script');
+      toast({ title: 'Error', description: 'Failed to restore script', variant: 'destructive' });
     }
   };
 
@@ -84,9 +84,9 @@ export default function ScriptsPage() {
     try {
       await scriptApi.delete(id);
       loadScripts();
-      toast.success('Script deleted successfully');
+      toast({ title: 'Success', description: 'Script deleted successfully' });
     } catch (error) {
-      toast.error('Failed to delete script');
+      toast({ title: 'Error', description: 'Failed to delete script', variant: 'destructive' });
     }
   };
 

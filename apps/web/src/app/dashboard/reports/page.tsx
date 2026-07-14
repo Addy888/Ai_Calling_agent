@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Plus, Download, Eye, Play, FileText } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { Spinner } from '@/components/ui/spinner';
-import { useToast } from '@/components/ui/toast';
+import { useToast } from '@/components/ui/use-toast';
 
 interface Report {
   id: string;

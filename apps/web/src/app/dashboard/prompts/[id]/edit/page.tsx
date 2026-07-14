@@ -8,7 +8,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { ArrowLeft } from 'lucide-react';
 import { promptApi } from '@/lib/api';
 import { Prompt } from '@/types';
-import { toast } from '@/components/ui/toast';
+import { toast } from '@/components/ui/use-toast';
 import { EditPromptForm } from './edit-prompt-form';
 
 export default function EditPromptPage() {
@@ -25,7 +25,7 @@ export default function EditPromptPage() {
       const response = await promptApi.getById(promptId);
       setPrompt(response.data.data);
     } catch (error) {
-      toast.error('Failed to load prompt details');
+      toast({ title: 'Error', description: 'Failed to load prompt details', variant: 'destructive' });
       router.push('/dashboard/prompts');
     } finally {
       setLoading(false);

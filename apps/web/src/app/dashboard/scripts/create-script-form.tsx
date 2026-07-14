@@ -15,7 +15,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Eye, Wand2 } from 'lucide-react';
 import { scriptApi } from '@/lib/api';
 import { CreateScriptDto, ScriptLanguage } from '@/types';
-import { toast } from '@/components/ui/toast';
+import { toast } from '@/components/ui/use-toast';
 
 const scriptSchema = z.object({
   name: z.string().min(1, 'Script name is required').max(255, 'Script name is too long'),
@@ -101,11 +101,11 @@ export function CreateScriptForm({ onSuccess }: CreateScriptFormProps) {
     try {
       setLoading(true);
       await scriptApi.create(data);
-      toast.success('Script created successfully');
+      toast({ title: 'Success', description: 'Script created successfully' });
       onSuccess?.();
       form.reset();
     } catch (error) {
-      toast.error('Failed to create script');
+      toast({ title: 'Error', description: 'Failed to create script', variant: 'destructive' });
     } finally {
       setLoading(false);
     }

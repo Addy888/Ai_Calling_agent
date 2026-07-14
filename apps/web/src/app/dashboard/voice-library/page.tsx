@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Plus, Mic, Play, Trash2, Upload } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { Spinner } from '@/components/ui/spinner';
-import { useToast } from '@/components/ui/toast';
+import { useToast } from '@/components/ui/use-toast';
 
 interface VoiceProfile {
   id: string;

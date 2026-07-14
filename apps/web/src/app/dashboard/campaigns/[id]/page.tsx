@@ -25,7 +25,7 @@ import {
 import { campaignApi } from '@/lib/api';
 import { Campaign, CampaignStatus, Contact } from '@/types';
 import { formatDate, formatDateTime } from '@/lib/utils';
-import { toast } from '@/components/ui/toast';
+import { toast } from '@/components/ui/use-toast';
 
 const statusColors: Record<CampaignStatus, string> = {
   [CampaignStatus.DRAFT]: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300',
@@ -50,7 +50,7 @@ export default function CampaignDetailsPage() {
       const response = await campaignApi.getById(campaignId);
       setCampaign(response.data.data);
     } catch (error) {
-      toast.error('Failed to load campaign details');
+      toast({ title: 'Error', description: 'Failed to load campaign details', variant: 'destructive' });
       router.push('/dashboard/campaigns');
     } finally {
       setLoading(false);
@@ -67,29 +67,29 @@ export default function CampaignDetailsPage() {
     try {
       await campaignApi.updateStatus(campaignId, status);
       loadCampaign();
-      toast.success('Campaign status updated successfully');
+      toast({ title: 'Success', description: 'Campaign status updated successfully' });
     } catch (error) {
-      toast.error('Failed to update campaign status');
+      toast({ title: 'Error', description: 'Failed to update campaign status', variant: 'destructive' });
     }
   };
 
   const handleClone = async () => {
     try {
       await campaignApi.clone(campaignId, `${campaign?.name} (Copy)`);
-      toast.success('Campaign cloned successfully');
+      toast({ title: 'Success', description: 'Campaign cloned successfully' });
       router.push('/dashboard/campaigns');
     } catch (error) {
-      toast.error('Failed to clone campaign');
+      toast({ title: 'Error', description: 'Failed to clone campaign', variant: 'destructive' });
     }
   };
 
   const handleArchive = async () => {
     try {
       await campaignApi.archive(campaignId);
-      toast.success('Campaign archived successfully');
+      toast({ title: 'Success', description: 'Campaign archived successfully' });
       router.push('/dashboard/campaigns');
     } catch (error) {
-      toast.error('Failed to archive campaign');
+      toast({ title: 'Error', description: 'Failed to archive campaign', variant: 'destructive' });
     }
   };
 
@@ -97,9 +97,9 @@ export default function CampaignDetailsPage() {
     try {
       await campaignApi.restore(campaignId);
       loadCampaign();
-      toast.success('Campaign restored successfully');
+      toast({ title: 'Success', description: 'Campaign restored successfully' });
     } catch (error) {
-      toast.error('Failed to restore campaign');
+      toast({ title: 'Error', description: 'Failed to restore campaign', variant: 'destructive' });
     }
   };
 

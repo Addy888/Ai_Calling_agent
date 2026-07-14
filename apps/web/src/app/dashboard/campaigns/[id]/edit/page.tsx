@@ -8,7 +8,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { ArrowLeft } from 'lucide-react';
 import { campaignApi } from '@/lib/api';
 import { Campaign } from '@/types';
-import { toast } from '@/components/ui/toast';
+import { toast } from '@/components/ui/use-toast';
 import { EditCampaignForm } from './edit-campaign-form';
 
 export default function EditCampaignPage() {
@@ -25,7 +25,7 @@ export default function EditCampaignPage() {
       const response = await campaignApi.getById(campaignId);
       setCampaign(response.data.data);
     } catch (error) {
-      toast.error('Failed to load campaign details');
+      toast({ title: 'Error', description: 'Failed to load campaign details', variant: 'destructive' });
       router.push('/dashboard/campaigns');
     } finally {
       setLoading(false);

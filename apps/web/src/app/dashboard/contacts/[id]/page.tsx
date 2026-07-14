@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/toast';
+import { useToast } from '@/components/ui/use-toast';
 import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeft, Edit, Mail, Phone, MapPin, Building, Globe, Clock, Tag } from 'lucide-react';
 import Link from 'next/link';

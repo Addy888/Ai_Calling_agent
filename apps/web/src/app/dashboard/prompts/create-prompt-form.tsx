@@ -15,7 +15,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Wand2, Info } from 'lucide-react';
 import { promptApi } from '@/lib/api';
 import { CreatePromptDto, PromptStatus } from '@/types';
-import { toast } from '@/components/ui/toast';
+import { toast } from '@/components/ui/use-toast';
 
 const promptSchema = z.object({
   name: z.string().min(1, 'Prompt name is required').max(255, 'Prompt name is too long'),
@@ -129,11 +129,11 @@ export function CreatePromptForm({ onSuccess }: CreatePromptFormProps) {
     try {
       setLoading(true);
       await promptApi.create(data);
-      toast.success('Prompt created successfully');
+      toast({ title: 'Success', description: 'Prompt created successfully' });
       onSuccess?.();
       form.reset();
     } catch (error) {
-      toast.error('Failed to create prompt');
+      toast({ title: 'Error', description: 'Failed to create prompt', variant: 'destructive' });
     } finally {
       setLoading(false);
     }

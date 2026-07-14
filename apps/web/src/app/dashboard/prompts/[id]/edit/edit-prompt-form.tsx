@@ -15,7 +15,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Save, Info } from 'lucide-react';
 import { promptApi } from '@/lib/api';
 import { Prompt, UpdatePromptDto, PromptStatus } from '@/types';
-import { toast } from '@/components/ui/toast';
+import { toast } from '@/components/ui/use-toast';
 
 const promptSchema = z.object({
   name: z.string().min(1, 'Prompt name is required').max(255, 'Prompt name is too long'),
@@ -55,10 +55,10 @@ export function EditPromptForm({ prompt, onSuccess }: EditPromptFormProps) {
     try {
       setLoading(true);
       await promptApi.update(prompt.id, data);
-      toast.success('Prompt updated successfully');
+      toast({ title: 'Success', description: 'Prompt updated successfully' });
       onSuccess?.();
     } catch (error) {
-      toast.error('Failed to update prompt');
+      toast({ title: 'Error', description: 'Failed to update prompt', variant: 'destructive' });
     } finally {
       setLoading(false);
     }

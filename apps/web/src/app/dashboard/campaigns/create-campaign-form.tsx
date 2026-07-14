@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Spinner } from '@/components/ui/spinner';
 import { campaignApi, scriptApi, promptApi } from '@/lib/api';
 import { CreateCampaignDto, CampaignStatus, Script, Prompt, PromptStatus } from '@/types';
-import { toast } from '@/components/ui/toast';
+import { toast } from '@/components/ui/use-toast';
 
 const campaignSchema = z.object({
   name: z.string().min(1, 'Campaign name is required').max(255, 'Campaign name is too long'),
@@ -56,7 +56,7 @@ export function CreateCampaignForm({ onSuccess }: CreateCampaignFormProps) {
       setScripts(scriptsResponse.data.data.items);
       setPrompts(promptsResponse.data.data.items);
     } catch (error) {
-      toast.error('Failed to load scripts and prompts');
+      toast({ title: 'Error', description: 'Failed to load scripts and prompts', variant: 'destructive' });
     } finally {
       setLoadingResources(false);
     }
@@ -70,11 +70,11 @@ export function CreateCampaignForm({ onSuccess }: CreateCampaignFormProps) {
     try {
       setLoading(true);
       await campaignApi.create(data);
-      toast.success('Campaign created successfully');
+      toast({ title: 'Success', description: 'Campaign created successfully' });
       onSuccess?.();
       form.reset();
     } catch (error) {
-      toast.error('Failed to create campaign');
+      toast({ title: 'Error', description: 'Failed to create campaign', variant: 'destructive' });
     } finally {
       setLoading(false);
     }

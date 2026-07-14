@@ -34,6 +34,7 @@ import { MemoryModule } from './modules/memory/memory.module';
 import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 import { DecisionEngineModule } from './modules/decision-engine/decision-engine.module';
 import { ConversationManagerModule } from './modules/conversation-manager/conversation-manager.module';
+import { EvaluationModule } from './modules/evaluation/evaluation.module';
 
 @Module({
   imports: [
@@ -68,6 +69,7 @@ import { ConversationManagerModule } from './modules/conversation-manager/conver
     KnowledgeModule,
     DecisionEngineModule,
     ConversationManagerModule,
+    EvaluationModule,
   ],
   providers: [
     {
