@@ -22,6 +22,9 @@ import {
   ChevronRight,
   Brain,
   Database,
+  Bot,
+  Activity,
+  Sliders,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -37,6 +40,9 @@ const navigation = [
   { name: 'Memory', href: '/dashboard/memory', icon: Brain },
   { name: 'Knowledge Engine', href: '/dashboard/knowledge-engine', icon: Database },
   { name: 'Knowledge Base', href: '/dashboard/knowledge-base', icon: BookOpen },
+  { name: 'AI Agents', href: '/dashboard/ai-agents', icon: Bot },
+  { name: 'Runtime Monitor', href: '/dashboard/runtime-monitor', icon: Activity },
+  { name: 'Runtime Config', href: '/dashboard/runtime-config', icon: Sliders },
   { name: 'Voice Library', href: '/dashboard/voice-library', icon: Mic },
   { name: 'Call History', href: '/dashboard/calls', icon: Phone },
   { name: 'Reports', href: '/dashboard/reports', icon: FileSpreadsheet },

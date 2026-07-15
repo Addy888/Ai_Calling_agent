@@ -3239,3 +3239,374 @@ enum ReleaseStatus {
   ROLLED_BACK
   ARCHIVED
 }
+
+// ============================================
+// AI AGENT RUNTIME - Phase 4.1
+// ============================================
+
+model AIAgent {
+  id                String         @id @default(uuid())
+  companyId         String
+  campaignId        String?
+  agentName         String         @db.VarChar(255)
+  agentType         AgentType      @default(CONVERSATIONAL)
+  status            AgentStatus    @default(IDLE)
+  version           String         @default("1.0.0") @db.VarChar(20)
+  isEnabled         Boolean        @default(true)
+  isActive          Boolean        @default(false)
+  promptId          String?
+  scriptId          String?
+  knowledgeBaseIds  Json?
+  configuration     Json
+  metadata          Json?
+  lastStartedAt     DateTime?
+  lastStoppedAt     DateTime?
+  totalSessions     Int            @default(0)
+  successfulSessions Int           @default(0)
+  failedSessions    Int            @default(0)
+  averageResponseTime Float?
+  createdBy         String?        @db.VarChar(255)
+  updatedBy         String?        @db.VarChar(255)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  sessions          AgentSession[]
+  healthChecks      AgentHealth[]
+  events            AgentEvent[]
+  metrics           AgentMetrics[]
+
+  @@index([companyId])
+  @@index([campaignId])
+  @@index([status])
+  @@index([isEnabled])
+  @@index([isActive])
+  @@index([createdAt])
+  @@map("ai_agents")
+}
+
+enum AgentType {
+  CONVERSATIONAL
+  ANALYTICAL
+  SUPPORT
+  SALES
+  CUSTOM
+}
+
+enum AgentStatus {
+  IDLE
+  INITIALIZING
+  LOADING
+  READY
+  THINKING
+  RESPONDING
+  WAITING
+  PAUSED
+  COMPLETED
+  ERROR
+  RECOVERING
+}
+
+model AgentSession {
+  id                String              @id @default(uuid())
+  sessionId         String              @unique @db.VarChar(255)
+  agentId           String
+  companyId         String
+  campaignId        String?
+  contactId         String?
+  status            SessionStatus       @default(ACTIVE)
+  conversationId    String?
+  runtimeState      Json?
+  sessionVariables  Json?
+  sessionContext    Json?
+  sessionMetadata   Json?
+  startedAt         DateTime            @default(now())
+  pausedAt          DateTime?
+  resumedAt         DateTime?
+  closedAt          DateTime?
+  expiresAt         DateTime?
+  duration          Int?
+  messageCount      Int                 @default(0)
+  errorCount        Int                 @default(0)
+  lastActivityAt    DateTime            @default(now())
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  agent             AIAgent             @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  events            SessionEvent[]
+  states            RuntimeState[]
+  conversations     ConversationRuntime[]
+
+  @@index([sessionId])
+  @@index([agentId])
+  @@index([companyId])
+  @@index([campaignId])
+  @@index([contactId])
+  @@index([status])
+  @@index([startedAt])
+  @@index([lastActivityAt])
+  @@map("agent_sessions")
+}
+
+enum SessionStatus {
+  ACTIVE
+  PAUSED
+  EXPIRED
+  CLOSED
+  ERROR
+}
+
+model RuntimeState {
+  id                String         @id @default(uuid())
+  sessionId         String
+  agentId           String
+  companyId         String
+  state             AgentStatus
+  previousState     AgentStatus?
+  stateData         Json?
+  prompt            String?        @db.LongText
+  script            String?        @db.LongText
+  memory            Json?
+  knowledge         Json?
+  variables         Json?
+  context           Json?
+  metadata          Json?
+  transitionReason  String?        @db.Text
+  timestamp         DateTime       @default(now())
+
+  session           AgentSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([agentId])
+  @@index([companyId])
+  @@index([state])
+  @@index([timestamp])
+  @@map("runtime_states")
+}
+
+model ConversationRuntime {
+  id                    String              @id @default(uuid())
+  sessionId             String
+  conversationId        String              @unique
+  agentId               String
+  companyId             String
+  campaignId            String?
+  contactId             String?
+  currentState          ConversationState   @default(GREETING)
+  conversationContext   Json?
+  conversationVariables Json?
+  timeline              Json?
+  turnCount             Int                 @default(0)
+  startedAt             DateTime            @default(now())
+  lastTurnAt            DateTime            @default(now())
+  pausedAt              DateTime?
+  endedAt               DateTime?
+  duration              Int?
+  metadata              Json?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  session               AgentSession        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([conversationId])
+  @@index([agentId])
+  @@index([companyId])
+  @@index([campaignId])
+  @@index([contactId])
+  @@index([currentState])
+  @@index([startedAt])
+  @@map("conversation_runtimes")
+}
+
+model RuntimeConfiguration {
+  id                    String   @id @default(uuid())
+  companyId             String   @unique
+  temperature           Float    @default(0.7)
+  maxTokens             Int      @default(4000)
+  responseTimeout       Int      @default(30000)
+  memoryLimit           Int      @default(10000)
+  maxContextLength      Int      @default(8000)
+  defaultLanguage       String   @default("en") @db.VarChar(10)
+  fallbackStrategy      String   @default("RETRY") @db.VarChar(50)
+  maxRetryCount         Int      @default(3)
+  loggingLevel          String   @default("INFO") @db.VarChar(20)
+  debugMode             Boolean  @default(false)
+  evaluationMode        Boolean  @default(false)
+  enableCaching         Boolean  @default(true)
+  enableParallelization Boolean  @default(true)
+  sessionTimeout        Int      @default(1800)
+  maxConcurrentSessions Int      @default(100)
+  settings              Json?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([companyId])
+  @@map("runtime_configurations")
+}
+
+model AgentHealth {
+  id                String      @id @default(uuid())
+  agentId           String
+  companyId         String
+  status            HealthStatus @default(HEALTHY)
+  heartbeatAt       DateTime    @default(now())
+  memoryUsageMB     Float?
+  cpuUsagePercent   Float?
+  runtimeLatencyMs  Float?
+  responseLatencyMs Float?
+  knowledgeLatencyMs Float?
+  promptLatencyMs   Float?
+  activeSessions    Int         @default(0)
+  totalSessions     Int         @default(0)
+  successRate       Float?
+  errorRate         Float?
+  lastError         String?     @db.Text
+  recoveryCount     Int         @default(0)
+  metadata          Json?
+  checkedAt         DateTime    @default(now())
+
+  agent             AIAgent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([agentId])
+  @@index([companyId])
+  @@index([status])
+  @@index([heartbeatAt])
+  @@index([checkedAt])
+  @@map("agent_health")
+}
+
+enum HealthStatus {
+  HEALTHY
+  DEGRADED
+  UNHEALTHY
+  CRITICAL
+}
+
+model AgentEvent {
+  id          String      @id @default(uuid())
+  agentId     String
+  sessionId   String?
+  companyId   String
+  eventType   EventType
+  eventName   String      @db.VarChar(255)
+  eventData   Json?
+  severity    EventSeverity @default(INFO)
+  message     String?     @db.Text
+  metadata    Json?
+  timestamp   DateTime    @default(now())
+
+  agent       AIAgent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([agentId])
+  @@index([sessionId])
+  @@index([companyId])
+  @@index([eventType])
+  @@index([severity])
+  @@index([timestamp])
+  @@map("agent_events")
+}
+
+enum EventType {
+  AGENT_STARTED
+  AGENT_STOPPED
+  AGENT_PAUSED
+  AGENT_RESUMED
+  AGENT_ERROR
+  AGENT_RECOVERED
+  SESSION_CREATED
+  SESSION_CLOSED
+  SESSION_PAUSED
+  SESSION_RESUMED
+  SESSION_EXPIRED
+  RUNTIME_READY
+  RUNTIME_ERROR
+  STATE_CHANGED
+  HEALTH_UPDATE
+  PERFORMANCE_ALERT
+  CONFIGURATION_CHANGED
+}
+
+enum EventSeverity {
+  DEBUG
+  INFO
+  WARNING
+  ERROR
+  CRITICAL
+}
+
+model SessionEvent {
+  id          String      @id @default(uuid())
+  sessionId   String
+  eventType   String      @db.VarChar(100)
+  eventData   Json?
+  timestamp   DateTime    @default(now())
+
+  session     AgentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([eventType])
+  @@index([timestamp])
+  @@map("session_events")
+}
+
+model AgentMetrics {
+  id                    String   @id @default(uuid())
+  agentId               String
+  companyId             String
+  date                  DateTime @db.Date
+  totalSessions         Int      @default(0)
+  activeSessions        Int      @default(0)
+  completedSessions     Int      @default(0)
+  failedSessions        Int      @default(0)
+  averageSessionDuration Float?
+  averageResponseTime   Float?
+  averageTurnCount      Float?
+  successRate           Float?
+  errorRate             Float?
+  uptime                Float?
+  memoryUsageAvg        Float?
+  cpuUsageAvg           Float?
+  knowledgeQueryCount   Int      @default(0)
+  promptExecutionCount  Int      @default(0)
+  decisionCount         Int      @default(0)
+  metadata              Json?
+  createdAt             DateTime @default(now())
+
+  agent                 AIAgent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@unique([agentId, date])
+  @@index([agentId])
+  @@index([companyId])
+  @@index([date])
+  @@index([createdAt])
+  @@map("agent_metrics")
+}
+
+model RuntimeLog {
+  id          String      @id @default(uuid())
+  agentId     String?
+  sessionId   String?
+  companyId   String
+  logLevel    LogLevel    @default(INFO)
+  logType     String      @db.VarChar(100)
+  message     String      @db.Text
+  data        Json?
+  stackTrace  String?     @db.LongText
+  timestamp   DateTime    @default(now())
+
+  @@index([agentId])
+  @@index([sessionId])
+  @@index([companyId])
+  @@index([logLevel])
+  @@index([logType])
+  @@index([timestamp])
+  @@map("runtime_logs")
+}
+
+enum LogLevel {
+  DEBUG
+  INFO
+  WARN
+  ERROR
+  FATAL
+}
