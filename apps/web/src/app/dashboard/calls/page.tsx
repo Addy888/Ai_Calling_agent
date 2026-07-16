@@ -191,7 +191,7 @@ export default function CallsPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const filteredCalls = calls.filter((call) => {
+  const filteredCalls = (calls || []).filter((call) => {
     const matchesSearch =
       call.phoneNumber.includes(search) ||
       (call.contact && `${call.contact.firstName} ${call.contact.lastName}`.toLowerCase().includes(search.toLowerCase())) ||
@@ -202,7 +202,7 @@ export default function CallsPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const uniqueStatuses = Array.from(new Set(calls.map(call => call.status)));
+  const uniqueStatuses = Array.from(new Set((calls || []).map(call => call.status)));
 
   const columns: Column<Call>[] = [
     {
@@ -283,9 +283,9 @@ export default function CallsPage() {
       </div>
 
       {!loading && (() => {
-        const completedCalls = calls.filter(c => c.status === 'COMPLETED').length;
-        const totalDuration = calls.reduce((sum, c) => sum + c.duration, 0);
-        const avgDuration = calls.length > 0 ? Math.round(totalDuration / calls.length) : 0;
+        const completedCalls = (calls || []).filter(c => c.status === 'COMPLETED').length;
+        const totalDuration = (calls || []).reduce((sum, c) => sum + c.duration, 0);
+        const avgDuration = (calls || []).length > 0 ? Math.round(totalDuration / (calls || []).length) : 0;
 
         return (
           <div className="grid gap-4 md:grid-cols-4">
@@ -295,7 +295,7 @@ export default function CallsPage() {
                 <Phone className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{calls.length}</div>
+                <div className="text-2xl font-bold">{(calls || []).length}</div>
               </CardContent>
             </Card>
             <Card>
@@ -306,7 +306,7 @@ export default function CallsPage() {
               <CardContent>
                 <div className="text-2xl font-bold">{completedCalls}</div>
                 <p className="text-xs text-muted-foreground">
-                  {calls.length > 0 ? Math.round((completedCalls / calls.length) * 100) : 0}% success rate
+                  {(calls || []).length > 0 ? Math.round((completedCalls / (calls || []).length) * 100) : 0}% success rate
                 </p>
               </CardContent>
             </Card>

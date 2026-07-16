@@ -332,7 +332,7 @@ export default function VoiceLibraryPage() {
               <Mic className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{voices.length}</div>
+              <div className="text-2xl font-bold">{(voices || []).length}</div>
             </CardContent>
           </Card>
           <Card>
@@ -342,7 +342,7 @@ export default function VoiceLibraryPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {voices.filter(v => v.isActive).length}
+                {(voices || []).filter(v => v.isActive).length}
               </div>
             </CardContent>
           </Card>
@@ -353,7 +353,7 @@ export default function VoiceLibraryPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {new Set(voices.map(v => v.provider)).size}
+                {new Set((voices || []).map(v => v.provider)).size}
               </div>
             </CardContent>
           </Card>
@@ -364,7 +364,7 @@ export default function VoiceLibraryPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {new Set(voices.map(v => v.language)).size}
+                {new Set((voices || []).map(v => v.language)).size}
               </div>
             </CardContent>
           </Card>
