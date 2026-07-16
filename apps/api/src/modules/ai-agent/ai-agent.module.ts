@@ -12,6 +12,11 @@ import { HealthMonitorService } from './services/health-monitor.service';
 import { AgentPoolService } from './services/agent-pool.service';
 import { MetricsService } from './services/metrics.service';
 import { RuntimeLoggingService } from './services/logging.service';
+import { VoiceStudioController } from './voice-studio.controller';
+import { VoiceStudioService } from './services/voice-studio.service';
+import { VoiceStudioGateway } from './voice-studio.gateway';
+import { KokoroTTSProvider } from './services/kokoro-tts.provider';
+import { VoiceBrainIntegrationService } from './services/voice-brain-integration.service';
 import { MemoryModule } from '../memory/memory.module';
 import { KnowledgeModule } from '../knowledge/knowledge.module';
 import { PromptsModule } from '../prompts/prompts.module';
@@ -23,7 +28,7 @@ import { PromptsModule } from '../prompts/prompts.module';
     forwardRef(() => KnowledgeModule),
     forwardRef(() => PromptsModule),
   ],
-  controllers: [AIAgentController],
+  controllers: [AIAgentController, VoiceStudioController],
   providers: [
     AIAgentService,
     AgentRuntimeService,
@@ -36,6 +41,10 @@ import { PromptsModule } from '../prompts/prompts.module';
     AgentPoolService,
     MetricsService,
     RuntimeLoggingService,
+    VoiceStudioService,
+    VoiceStudioGateway,
+    KokoroTTSProvider,
+    VoiceBrainIntegrationService,
   ],
   exports: [
     AIAgentService,
@@ -49,6 +58,10 @@ import { PromptsModule } from '../prompts/prompts.module';
     AgentPoolService,
     MetricsService,
     RuntimeLoggingService,
+    VoiceStudioService,
+    VoiceStudioGateway,
+    KokoroTTSProvider,
+    VoiceBrainIntegrationService,
   ],
 })
 export class AIAgentModule {}

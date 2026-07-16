@@ -50,6 +50,9 @@ model Company {
   aiProviderConfigs AIProviderConfig[]
   aiPersonalities   AIPersonality[]
   promptTemplates   PromptTemplate[]
+  voiceLibrary      VoiceLibrary[]
+  voiceConfiguration VoiceConfiguration?
+  voiceHistory      VoiceHistory[]
 
   @@index([email])
   @@index([isActive])
@@ -1020,6 +1023,104 @@ model ScriptExecution {
 // ============================================
 // AI MEMORY MANAGER - Phase 3.3
 // ============================================
+
+// ============================================
+// VOICE STUDIO - Phase 4.2
+// ============================================
+
+model VoiceProvider {
+  id          String   @id @default(uuid())
+  name        String   @unique @db.VarChar(100)
+  type        String   @db.VarChar(50)
+  apiEndpoint String?  @db.VarChar(500)
+  isActive    Boolean  @default(true)
+  metadata    Json?
+  createdBy   String?  @db.VarChar(255)
+  updatedBy   String?  @db.VarChar(255)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  voices      VoiceLibrary[]
+  
+  @@index([name])
+  @@index([type])
+  @@index([isActive])
+  @@map("voice_providers")
+}
+
+model VoiceLibrary {
+  id          String   @id @default(uuid())
+  companyId   String
+  providerId  String
+  name        String   @db.VarChar(255)
+  language    String   @db.VarChar(50)
+  gender      String   @db.VarChar(20)
+  voiceCode   String   @db.VarChar(100)
+  description String?  @db.Text
+  isActive    Boolean  @default(false)
+  metadata    Json?
+  createdBy   String?  @db.VarChar(255)
+  updatedBy   String?  @db.VarChar(255)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company     Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  provider    VoiceProvider  @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  history     VoiceHistory[]
+
+  @@unique([companyId, language, gender])
+  @@index([companyId])
+  @@index([providerId])
+  @@index([language])
+  @@index([gender])
+  @@index([isActive])
+  @@map("voice_library")
+}
+
+model VoiceConfiguration {
+  id                      String   @id @default(uuid())
+  companyId               String   @unique
+  speakingSpeed           Float    @default(1.0)
+  pitch                   Float    @default(1.0)
+  volume                  Float    @default(1.0)
+  pauseBetweenSentences   Int      @default(300)
+  pauseBetweenParagraphs  Int      @default(600)
+  voiceTemperature        Float?   @default(0.7)
+  metadata                Json?
+  createdBy               String?  @db.VarChar(255)
+  updatedBy               String?  @db.VarChar(255)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  company     Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@map("voice_configurations")
+}
+
+model VoiceHistory {
+  id          String   @id @default(uuid())
+  companyId   String
+  voiceId     String
+  text        String   @db.LongText
+  audioUrl    String?  @db.VarChar(1000)
+  duration    Int?
+  fileSize    Int?
+  status      String   @db.VarChar(50)
+  errorMessage String? @db.Text
+  metadata    Json?
+  createdBy   String?  @db.VarChar(255)
+  createdAt   DateTime @default(now())
+
+  company     Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  voice       VoiceLibrary @relation(fields: [voiceId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([voiceId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("voice_history")
+}
 
 model ConversationMemory {
   id              String   @id @default(uuid())

@@ -38,6 +38,7 @@ import { EvaluationModule } from './modules/evaluation/evaluation.module';
 import { TrainingManagerModule } from './modules/training-manager/training-manager.module';
 import { DatasetBuilderModule } from './modules/dataset-builder/dataset-builder.module';
 import { ValidationEngineModule } from './modules/validation-engine/validation-engine.module';
+import { AIAgentModule } from './modules/ai-agent/ai-agent.module';
 
 @Module({
   imports: [
@@ -76,6 +77,7 @@ import { ValidationEngineModule } from './modules/validation-engine/validation-e
     TrainingManagerModule,
     DatasetBuilderModule,
     ValidationEngineModule,
+    AIAgentModule,
   ],
   providers: [
     {

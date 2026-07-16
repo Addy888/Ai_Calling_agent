@@ -18,6 +18,12 @@ import {
 } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import dynamic from 'next/dynamic';
+
+const VoiceLibrary = dynamic(() => import('@/components/voice-studio/voice-library').then(mod => ({ default: mod.VoiceLibrary })), { ssr: false });
+const VoiceSettings = dynamic(() => import('@/components/voice-studio/voice-settings').then(mod => ({ default: mod.VoiceSettings })), { ssr: false });
+const VoicePreview = dynamic(() => import('@/components/voice-studio/voice-preview').then(mod => ({ default: mod.VoicePreview })), { ssr: false });
+const VoiceHistory = dynamic(() => import('@/components/voice-studio/voice-history').then(mod => ({ default: mod.VoiceHistory })), { ssr: false });
 
 export default function AgentDetailsPage() {
   const params = useParams();
@@ -291,6 +297,7 @@ export default function AgentDetailsPage() {
           <TabsTrigger value="sessions">Sessions</TabsTrigger>
           <TabsTrigger value="metrics">Metrics</TabsTrigger>
           <TabsTrigger value="health">Health</TabsTrigger>
+          <TabsTrigger value="voice">Voice Studio</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -481,6 +488,33 @@ export default function AgentDetailsPage() {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="voice" className="space-y-4">
+          <Tabs defaultValue="library" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="library">Voice Library</TabsTrigger>
+              <TabsTrigger value="settings">Settings</TabsTrigger>
+              <TabsTrigger value="preview">Preview</TabsTrigger>
+              <TabsTrigger value="history">History</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="library">
+              <VoiceLibrary agentId={params.id as string} />
+            </TabsContent>
+
+            <TabsContent value="settings">
+              <VoiceSettings agentId={params.id as string} />
+            </TabsContent>
+
+            <TabsContent value="preview">
+              <VoicePreview agentId={params.id as string} />
+            </TabsContent>
+
+            <TabsContent value="history">
+              <VoiceHistory agentId={params.id as string} />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
       </Tabs>
     </div>
