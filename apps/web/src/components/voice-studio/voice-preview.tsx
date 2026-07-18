@@ -54,7 +54,7 @@ export function VoicePreview({ agentId }: VoicePreviewProps) {
 
   const fetchVoices = async () => {
     try {
-      const response = await fetch('/api/voice-studio/voices', {
+      const response = await fetch('/api/v1/voice-studio/voices', {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
@@ -96,7 +96,7 @@ export function VoicePreview({ agentId }: VoicePreviewProps) {
         });
       }, 200);
 
-      const response = await fetch('/api/voice-studio/preview', {
+      const response = await fetch('/api/v1/voice-studio/preview', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

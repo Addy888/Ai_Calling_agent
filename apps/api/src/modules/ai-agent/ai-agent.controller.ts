@@ -37,7 +37,7 @@ import {
 @ApiTags('AI Agent Runtime')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
-@Controller('ai-agent')
+@Controller('api/v1/ai-agents')
 export class AIAgentController {
   constructor(
     private readonly aiAgentService: AIAgentService,

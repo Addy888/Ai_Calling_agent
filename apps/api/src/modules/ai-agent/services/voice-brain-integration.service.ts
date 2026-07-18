@@ -3,7 +3,7 @@ import { VoiceStudioService } from './voice-studio.service';
 import { ConversationRuntimeService } from './conversation-runtime.service';
 import { RuntimeEngineService } from './runtime-engine.service';
 
-interface VoiceGenerationRequest {
+export interface VoiceGenerationRequest {
   agentId: string;
   sessionId: string;
   text: string;
@@ -12,7 +12,7 @@ interface VoiceGenerationRequest {
   saveToHistory?: boolean;
 }
 
-interface VoiceGenerationResponse {
+export interface VoiceGenerationResponse {
   audio: string;
   duration: number;
   format: string;

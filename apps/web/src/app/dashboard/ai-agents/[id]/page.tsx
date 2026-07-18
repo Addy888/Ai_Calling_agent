@@ -44,7 +44,7 @@ export default function AgentDetailsPage() {
 
   const fetchAgentDetails = async () => {
     try {
-      const response = await fetch(`/api/ai-agent/${params.id}`, {
+      const response = await fetch(`/api/v1/ai-agents/${params.id}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
@@ -62,7 +62,7 @@ export default function AgentDetailsPage() {
 
   const fetchSessions = async () => {
     try {
-      const response = await fetch(`/api/ai-agent/sessions?agentId=${params.id}`, {
+      const response = await fetch(`/api/v1/ai-agents/sessions?agentId=${params.id}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
@@ -78,7 +78,7 @@ export default function AgentDetailsPage() {
 
   const fetchMetrics = async () => {
     try {
-      const response = await fetch(`/api/ai-agent/${params.id}/metrics?days=7`, {
+      const response = await fetch(`/api/v1/ai-agents/${params.id}/metrics?days=7`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
@@ -94,7 +94,7 @@ export default function AgentDetailsPage() {
 
   const fetchHealth = async () => {
     try {
-      const response = await fetch(`/api/ai-agent/${params.id}/health`, {
+      const response = await fetch(`/api/v1/ai-agents/${params.id}/health`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
@@ -110,7 +110,7 @@ export default function AgentDetailsPage() {
 
   const startAgent = async () => {
     try {
-      const response = await fetch(`/api/ai-agent/${params.id}/start`, {
+      const response = await fetch(`/api/v1/ai-agents/${params.id}/start`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
@@ -128,7 +128,7 @@ export default function AgentDetailsPage() {
 
   const stopAgent = async () => {
     try {
-      const response = await fetch(`/api/ai-agent/${params.id}/stop`, {
+      const response = await fetch(`/api/v1/ai-agents/${params.id}/stop`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
@@ -146,7 +146,7 @@ export default function AgentDetailsPage() {
 
   const pauseAgent = async () => {
     try {
-      const response = await fetch(`/api/ai-agent/${params.id}/pause`, {
+      const response = await fetch(`/api/v1/ai-agents/${params.id}/pause`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
@@ -163,7 +163,7 @@ export default function AgentDetailsPage() {
 
   const resumeAgent = async () => {
     try {
-      const response = await fetch(`/api/ai-agent/${params.id}/resume`, {
+      const response = await fetch(`/api/v1/ai-agents/${params.id}/resume`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,

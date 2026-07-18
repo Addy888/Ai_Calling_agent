@@ -68,7 +68,7 @@ export function VoiceHistory({ agentId }: VoiceHistoryProps) {
         ...(filters.status && { status: filters.status }),
       });
 
-      const response = await fetch(`/api/voice-studio/history?${params}`, {
+      const response = await fetch(`/api/v1/voice-studio/history?${params}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },

@@ -40,7 +40,7 @@ export function VoiceSettings({ agentId }: VoiceSettingsProps) {
 
   const fetchConfiguration = async () => {
     try {
-      const response = await fetch('/api/voice-studio/configuration', {
+      const response = await fetch('/api/v1/voice-studio/configuration', {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
@@ -59,7 +59,7 @@ export function VoiceSettings({ agentId }: VoiceSettingsProps) {
   const saveConfiguration = async () => {
     setSaving(true);
     try {
-      const response = await fetch('/api/voice-studio/configuration', {
+      const response = await fetch('/api/v1/voice-studio/configuration', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

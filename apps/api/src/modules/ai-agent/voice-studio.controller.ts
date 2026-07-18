@@ -13,7 +13,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { VoiceStudioService } from './services/voice-studio.service';
-import { VoiceBrainIntegrationService } from './services/voice-brain-integration.service';
+import { VoiceBrainIntegrationService, VoiceGenerationResponse } from './services/voice-brain-integration.service';
 import {
   CreateVoiceProviderDto,
   CreateVoiceLibraryDto,
@@ -28,7 +28,7 @@ import {
 @ApiTags('Voice Studio')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
-@Controller('voice-studio')
+@Controller('api/v1/voice-studio')
 export class VoiceStudioController {
   constructor(
     private readonly voiceStudioService: VoiceStudioService,
@@ -187,7 +187,7 @@ export class VoiceStudioController {
       language?: string;
       gender?: string;
     },
-  ) {
+  ): Promise<VoiceGenerationResponse> {
     return this.voiceBrainIntegration.generateVoiceFromPromptResponse(
       body.agentId,
       body.sessionId,

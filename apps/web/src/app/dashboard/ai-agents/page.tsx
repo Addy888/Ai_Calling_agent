@@ -67,7 +67,7 @@ export default function AIAgentsPage() {
 
   const fetchAgents = async () => {
     try {
-      const response = await fetch('/api/ai-agent', {
+      const response = await fetch('/api/v1/ai-agents', {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
@@ -85,7 +85,7 @@ export default function AIAgentsPage() {
 
   const createAgent = async () => {
     try {
-      const response = await fetch('/api/ai-agent', {
+      const response = await fetch('/api/v1/ai-agents', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -113,7 +113,7 @@ export default function AIAgentsPage() {
 
   const startAgent = async (id: string) => {
     try {
-      const response = await fetch(`/api/ai-agent/${id}/start`, {
+      const response = await fetch(`/api/v1/ai-agents/${id}/start`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
@@ -138,7 +138,7 @@ export default function AIAgentsPage() {
 
   const stopAgent = async (id: string) => {
     try {
-      const response = await fetch(`/api/ai-agent/${id}/stop`, {
+      const response = await fetch(`/api/v1/ai-agents/${id}/stop`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,

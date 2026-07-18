@@ -68,7 +68,7 @@ export function VoiceLibrary({ agentId }: VoiceLibraryProps) {
 
   const fetchVoices = async () => {
     try {
-      const response = await fetch('/api/voice-studio/voices', {
+      const response = await fetch('/api/v1/voice-studio/voices', {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
@@ -86,7 +86,7 @@ export function VoiceLibrary({ agentId }: VoiceLibraryProps) {
 
   const fetchProviders = async () => {
     try {
-      const response = await fetch('/api/voice-studio/providers', {
+      const response = await fetch('/api/v1/voice-studio/providers', {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
@@ -106,7 +106,7 @@ export function VoiceLibrary({ agentId }: VoiceLibraryProps) {
 
   const fetchAvailableVoices = async (providerType: string) => {
     try {
-      const response = await fetch(`/api/voice-studio/providers/${providerType}/available-voices`, {
+      const response = await fetch(`/api/v1/voice-studio/providers/${providerType}/available-voices`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
@@ -122,7 +122,7 @@ export function VoiceLibrary({ agentId }: VoiceLibraryProps) {
 
   const createVoice = async () => {
     try {
-      const response = await fetch('/api/voice-studio/voices', {
+      const response = await fetch('/api/v1/voice-studio/voices', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -150,7 +150,7 @@ export function VoiceLibrary({ agentId }: VoiceLibraryProps) {
 
   const setActiveVoice = async (voiceId: string) => {
     try {
-      const response = await fetch('/api/voice-studio/voices/set-active', {
+      const response = await fetch('/api/v1/voice-studio/voices/set-active', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
