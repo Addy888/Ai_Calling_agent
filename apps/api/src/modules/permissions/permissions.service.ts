@@ -55,10 +55,10 @@ export class PermissionsService {
 
     if (search) {
       where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { slug: { contains: search, mode: 'insensitive' } },
-        { module: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
+        { name: { contains: search } },
+        { slug: { contains: search } },
+        { module: { contains: search } },
+        { description: { contains: search } },
       ];
     }
 

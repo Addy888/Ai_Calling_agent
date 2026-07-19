@@ -1,192 +1,211 @@
-# Quick Start Guide - AI Calling Agent
+# Phase 4.3.1 - Quick Start Guide
 
-## 🚀 Start the Application
+## 🚀 Setup in 3 Steps
 
-### Method 1: Two Terminals (Recommended)
+### Option A: Automated Setup (Recommended)
 
-**Terminal 1 - Backend API:**
+```powershell
+# Run the setup script
+.\setup-dataset-pipeline.ps1
+```
+
+The script will:
+1. Stop all Node.js processes
+2. Generate Prisma client
+3. Run database migration
+4. Build backend
+5. Verify folder structure
+
+---
+
+### Option B: Manual Setup
+
 ```bash
-cd apps/api
-npm run start:dev
-```
-Wait for: `Application successfully started on: http://localhost:3001`
+# Step 1: Stop all Node.js processes
+# Use Task Manager (Ctrl+Shift+Esc) or PowerShell:
+Get-Process node | Stop-Process -Force
 
-**Terminal 2 - Frontend:**
+# Step 2: Generate Prisma client
+cd database
+npx prisma generate
+
+# Step 3: Run migration
+npx prisma migrate dev --name add_dataset_processing_pipeline
+
+# Step 4: Build backend
+cd ..\apps\api
+npm run build
+
+# Step 5: Start servers
+npm run start:dev    # Terminal 1
+cd ..\web
+npm run dev          # Terminal 2
+```
+
+---
+
+## 🎯 Access the System
+
+After setup:
+
+1. **Backend API:** http://localhost:3001
+2. **Frontend UI:** http://localhost:3000
+3. **API Docs:** http://localhost:3001/api/docs
+4. **Dataset Manager:** http://localhost:3000/dashboard/dataset-manager
+
+---
+
+## 📋 Key Features
+
+### Upload Manager
+- Single file upload
+- Bulk upload
+- Drag & drop support
+- Duplicate detection (MD5 hash)
+- Progress tracking
+
+### Processing Pipeline (8 Stages)
+1. **Validation** - Audio quality checks
+2. **Transcription** - Speech-to-text (Faster Whisper)
+3. **Diarization** - Speaker separation
+4. **Conversation Parsing** - Structured conversation
+5. **Entity Extraction** - Extract budget, location, property, etc.
+6. **Intent Detection** - Detect customer intent
+7. **Lead Classification** - Hot/Warm/Cold scoring
+8. **PII Masking** - Protect sensitive data
+
+### Dashboard Statistics
+- Total files, processed, pending, failed
+- Languages detected (Hindi, English, Marathi)
+- Total audio duration
+- Storage used
+- Average noise level
+- Processing statistics by stage
+
+### Export Formats
+- JSON (structured)
+- JSONL (line-delimited)
+- CSV (tabular)
+- SQLite (database)
+
+Ready for Google Colab AI training.
+
+---
+
+## 🔧 Quick API Tests
+
 ```bash
-cd apps/web
-npm run dev
-```
-Wait for: `ready - started server on 0.0.0.0:3000`
+# Get dashboard
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  http://localhost:3001/api/v1/dataset/dashboard
 
-**Open Browser:**
-```
-http://localhost:3000
-```
+# List datasets
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  http://localhost:3001/api/v1/dataset
 
----
+# Upload file
+curl -X POST \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -F "file=@recording.mp3" \
+  http://localhost:3001/api/v1/dataset/upload
 
-## ✅ What's Fixed
-
-- ✅ All 11 pages work without errors
-- ✅ No 404 API errors
-- ✅ No hydration errors
-- ✅ No runtime crashes
-- ✅ Mock data fallbacks for all pages
-- ✅ Build completes with 0 errors
-
----
-
-## 📁 Pages Available
-
-### Core Features:
-1. Dashboard - `/dashboard`
-2. Analytics - `/dashboard/analytics`
-3. Companies - `/dashboard/companies`
-4. Users - `/dashboard/users`
-5. Contacts - `/dashboard/contacts`
-6. Campaigns - `/dashboard/campaigns`
-7. Scripts - `/dashboard/scripts`
-8. Prompts - `/dashboard/prompts`
-
-### NEW - Just Created:
-9. **Knowledge Base** - `/dashboard/knowledge-base` ⭐
-10. **Voice Library** - `/dashboard/voice-library` ⭐
-11. **Call History** - `/dashboard/calls` ⭐
-
-### Utilities:
-12. Reports - `/dashboard/reports`
-13. Settings - `/dashboard/settings`
-14. Profile - `/dashboard/profile`
-15. Notifications - `/dashboard/notifications`
-16. Activity Logs - `/dashboard/activity-logs`
-17. System Health - `/dashboard/system-health`
-
----
-
-## 🧪 Quick Test
-
-After starting both servers:
-
-1. **Login** at `http://localhost:3000/login`
-2. **Navigate** through all sidebar menu items
-3. **Verify** no console errors
-4. **Check** that data displays (real or mock)
-
----
-
-## 📊 Build Status
-
-```
-Frontend: ✅ 27 routes, 0 errors
-Backend:  ✅ NestJS compiled, 0 errors
+# Process full pipeline
+curl -X POST \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  http://localhost:3001/api/v1/dataset/{id}/process-all
 ```
 
 ---
 
-## 🐛 If Something Breaks
+## 📁 Folder Structure
 
-1. **Check both servers are running**
-   - Backend: http://localhost:3001
-   - Frontend: http://localhost:3000
-
-2. **Clear build cache**
-   ```bash
-   cd apps/web
-   rm -rf .next
-   npm run build
-   ```
-
-3. **Restart servers**
-   - Ctrl+C to stop
-   - Restart with commands above
-
-4. **Check console for errors**
-   - Browser DevTools (F12)
-   - Terminal output
+```
+Ai voice Dataset/
+├── raw_calls/              # Upload recordings here
+├── processed_audio/        # Processed audio files
+├── transcripts/            # Generated transcripts (.txt)
+├── diarization/            # Speaker diarization (.json)
+├── conversation_json/      # Structured conversations (.json)
+├── datasets/               # Prepared datasets
+├── exports/                # Export files (JSON, CSV, SQLite)
+├── logs/                   # Processing logs
+└── temp/                   # Temporary files
+```
 
 ---
 
-## 📖 Documentation
+## 🐛 Troubleshooting
 
-- `FINAL_STABILIZATION_REPORT.md` - Complete stabilization details
-- `TESTING_GUIDE.md` - Comprehensive testing instructions
-- `STABILIZATION_REPORT.md` - Technical implementation details
-- `MODIFIED_FILES_SUMMARY.md` - All changed files
+### Prisma Generation Fails
+**Error:** `EPERM: operation not permitted`  
+**Solution:** Stop all Node.js processes using Task Manager
 
----
+### Backend Build Fails
+**Error:** `Property does not exist on PrismaService`  
+**Solution:** Run `npx prisma generate` in database folder
 
-## ⚡ Key Features
+### Migration Fails
+**Error:** `Can't reach database server`  
+**Solution:** Check DATABASE_URL in .env file
 
-### Error Handling
-All pages have graceful fallbacks:
-- API fails → Shows mock data
-- No backend → UI still works
-- Network error → Meaningful message
-
-### Mock Data
-Every page has realistic sample data:
-- Dashboard: Stats and activities
-- Knowledge Base: FAQs and docs
-- Voice Library: Voice profiles
-- Calls: Call history with transcripts
-- Reports: Sample reports
-- And more...
-
-### Loading States
-- Spinner while loading
-- Data appears when ready
-- No flash of undefined content
+### Port Already in Use
+**Error:** `Port 3001 is already in use`  
+**Solution:** Stop existing server or change PORT in .env
 
 ---
 
-## 🎯 Next Steps
+## 📚 Documentation
 
-1. ✅ **Stabilization** - COMPLETE
-2. 🔄 **Runtime Testing** - YOU ARE HERE
-3. ⏳ **Backend APIs** - Implement missing endpoints
-4. ⏳ **Auth Testing** - Login, JWT, permissions
-5. ⏳ **Validation** - Test form submissions
-6. ⏳ **Production** - Deploy when ready
+- **Complete Documentation:** [PHASE_4.3.1_DATASET_PIPELINE_COMPLETE.md](./PHASE_4.3.1_DATASET_PIPELINE_COMPLETE.md)
+- **Detailed Setup Guide:** [PHASE_4.3.1_SETUP_GUIDE.md](./PHASE_4.3.1_SETUP_GUIDE.md)
+- **Phase 4.2 (Voice Studio):** [PHASE_4.2_VOICE_STUDIO_COMPLETE.md](./PHASE_4.2_VOICE_STUDIO_COMPLETE.md)
+
+---
+
+## ✅ Success Checklist
+
+- [ ] Prisma client generated
+- [ ] Database migration applied
+- [ ] Backend compiles (0 errors)
+- [ ] Backend starts successfully
+- [ ] Frontend compiles (0 errors)
+- [ ] Frontend starts successfully
+- [ ] Can access Dataset Manager UI
+- [ ] Dashboard shows statistics
+- [ ] Can upload a test file
+- [ ] Jobs are created
+- [ ] Real-time updates work
 
 ---
 
 ## 💡 Tips
 
-- Use Chrome DevTools to monitor network requests
-- Check console for API errors (expected with mock data)
-- Test each page by clicking sidebar menu items
-- Try creating/editing/deleting items
-- All operations work with mock data
+1. **Test with Small Files First**  
+   Upload 1-2 small audio files to test the pipeline before bulk processing.
+
+2. **Monitor Processing Logs**  
+   Check the logs tab in Dataset Manager to see detailed processing steps.
+
+3. **Use WebSocket for Real-time Updates**  
+   Connect to Socket.IO to see live progress updates.
+
+4. **Export Without PII**  
+   When exporting for AI training, set `includePII: false` to mask sensitive data.
+
+5. **Existing Recordings**  
+   Move files from `Ai voice Dataset/Recording/` to `raw_calls/` to process existing 600+ recordings.
 
 ---
 
-## 🆘 Support
+## 🆘 Need Help?
 
-**Issue**: Page not loading
-- Check browser console
-- Verify both servers running
-- Clear cache and rebuild
-
-**Issue**: API 404 errors
-- Expected! Mock data will display
-- Backend endpoints not yet implemented
-- Check FINAL_STABILIZATION_REPORT.md
-
-**Issue**: Can't login
-- Check backend is running
-- Verify database is seeded
-- Check backend logs
+1. Read [PHASE_4.3.1_SETUP_GUIDE.md](./PHASE_4.3.1_SETUP_GUIDE.md) for detailed instructions
+2. Check the troubleshooting section above
+3. Review console logs for specific errors
+4. Check Prisma Studio: `npx prisma studio`
 
 ---
 
-## 🎉 Success!
-
-You now have a fully stable AI Calling Agent platform with:
-- 27 working routes
-- 11 major features
-- Comprehensive error handling
-- Mock data for all pages
-- Professional enterprise UI
-- Zero runtime errors
-
-**Happy Testing! 🚀**
+*Last Updated: July 19, 2026*  
+*Version: 1.0*  
+*Phase: 4.3.1 Quick Start*

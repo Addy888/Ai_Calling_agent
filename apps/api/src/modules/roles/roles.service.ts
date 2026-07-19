@@ -78,9 +78,9 @@ export class RolesService {
 
     if (search) {
       where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { slug: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
+        { name: { contains: search } },
+        { slug: { contains: search } },
+        { description: { contains: search } },
       ];
     }
 

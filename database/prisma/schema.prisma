@@ -53,6 +53,7 @@ model Company {
   voiceLibrary      VoiceLibrary[]
   voiceConfiguration VoiceConfiguration?
   voiceHistory      VoiceHistory[]
+  datasets          DatasetRecord[] @relation("CompanyDatasets")
 
   @@index([email])
   @@index([isActive])
@@ -1957,6 +1958,600 @@ model DecisionConfiguration {
 }
 
 // ============================================
+// HUMAN CONVERSATION LEARNING ENGINE - Phase 4.3.3
+// ============================================
+
+model ConversationRecording {
+  id                    String              @id @default(uuid())
+  companyId             String
+  name                  String              @db.VarChar(500)
+  filePath              String              @db.VarChar(1000)
+  fileSize              BigInt
+  duration              Int
+  format                String              @db.VarChar(50)
+  sampleRate            Int?
+  channels              Int?                @default(2)
+  processingStatus      RecordingProcessingStatus @default(PENDING)
+  transcriptionStatus   TranscriptionStatus @default(PENDING)
+  analysisStatus        AnalysisStatus      @default(PENDING)
+  language              String              @default("en") @db.VarChar(10)
+  agentSpeakerId        String?             @db.VarChar(100)
+  customerSpeakerId     String?             @db.VarChar(100)
+  metadata              Json?
+  uploadedBy            String?             @db.VarChar(255)
+  processedAt           DateTime?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  transcript            RecordingTranscript?
+  analysis              ConversationAnalysis?
+  patterns              ConversationPattern[]
+  pausePatterns         PausePattern[]
+  speechPatterns        SpeechPattern[]
+  acknowledgements      AcknowledgementPattern[]
+  turnTakings           TurnTakingPattern[]
+  interruptionEvents    InterruptionEvent[]
+  learningInsights      LearningInsight[]
+
+  @@index([companyId])
+  @@index([processingStatus])
+  @@index([transcriptionStatus])
+  @@index([analysisStatus])
+  @@index([language])
+  @@index([createdAt])
+  @@map("conversation_recordings")
+}
+
+enum RecordingProcessingStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum TranscriptionStatus {
+  PENDING
+  TRANSCRIBING
+  COMPLETED
+  FAILED
+}
+
+enum AnalysisStatus {
+  PENDING
+  ANALYZING
+  COMPLETED
+  FAILED
+}
+
+model RecordingTranscript {
+  id                    String   @id @default(uuid())
+  recordingId           String   @unique
+  fullText              String   @db.LongText
+  segments              Json
+  speakerDiarization    Json
+  wordTimestamps        Json?
+  confidence            Float
+  language              String   @db.VarChar(10)
+  metadata              Json?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  recording             ConversationRecording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+
+  @@index([recordingId])
+  @@map("recording_transcripts")
+}
+
+model ConversationAnalysis {
+  id                    String   @id @default(uuid())
+  recordingId           String   @unique
+  companyId             String
+  totalDuration         Int
+  agentSpeakTime        Int
+  customerSpeakTime     Int
+  silenceTime           Int
+  overlapTime           Int
+  turnCount             Int
+  averageTurnDuration   Float
+  agentWordCount        Int
+  customerWordCount     Int
+  averageSpeakingSpeed  Float
+  agentSpeakingSpeed    Float
+  customerSpeakingSpeed Float
+  conversationFlow      Json
+  emotionalTone         Json?
+  greetingAnalysis      Json?
+  closingAnalysis       Json?
+  metadata              Json?
+  analyzedAt            DateTime @default(now())
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  recording             ConversationRecording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+
+  @@index([recordingId])
+  @@index([companyId])
+  @@index([analyzedAt])
+  @@map("conversation_analyses")
+}
+
+model ConversationPattern {
+  id                    String          @id @default(uuid())
+  recordingId           String
+  companyId             String
+  patternType           PatternType
+  occurrenceTime        Float
+  duration              Float
+  speaker               SpeakerRole
+  context               String?         @db.Text
+  beforeContext         String?         @db.Text
+  afterContext          String?         @db.Text
+  confidence            Float
+  metadata              Json?
+  createdAt             DateTime        @default(now())
+
+  recording             ConversationRecording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+
+  @@index([recordingId])
+  @@index([companyId])
+  @@index([patternType])
+  @@index([speaker])
+  @@index([occurrenceTime])
+  @@map("conversation_patterns")
+}
+
+enum PatternType {
+  GREETING
+  INTRODUCTION
+  QUESTION_ASKING
+  ANSWER_GIVING
+  OBJECTION_HANDLING
+  BUDGET_DISCUSSION
+  LOCATION_DISCUSSION
+  CLOSING
+  REFERRAL_REQUEST
+  ACKNOWLEDGEMENT
+  CLARIFICATION
+  CONFIRMATION
+}
+
+enum SpeakerRole {
+  AGENT
+  CUSTOMER
+  BOTH
+  UNKNOWN
+}
+
+model PausePattern {
+  id                    String      @id @default(uuid())
+  recordingId           String
+  companyId             String
+  pauseType             PauseType
+  duration              Int
+  occurrenceTime        Float
+  speaker               SpeakerRole
+  beforePhrase          String?     @db.Text
+  afterPhrase           String?     @db.Text
+  contextType           String?     @db.VarChar(100)
+  isNatural             Boolean     @default(true)
+  metadata              Json?
+  createdAt             DateTime    @default(now())
+
+  recording             ConversationRecording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+
+  @@index([recordingId])
+  @@index([companyId])
+  @@index([pauseType])
+  @@index([speaker])
+  @@index([duration])
+  @@map("pause_patterns")
+}
+
+enum PauseType {
+  SHORT_PAUSE
+  MEDIUM_PAUSE
+  LONG_PAUSE
+  THINKING_PAUSE
+  EMOTIONAL_PAUSE
+  NATURAL_SILENCE
+  AWKWARD_SILENCE
+  TURN_TAKING_PAUSE
+}
+
+model SpeechPattern {
+  id                    String      @id @default(uuid())
+  recordingId           String
+  companyId             String
+  speaker               SpeakerRole
+  startTime             Float
+  endTime               Float
+  duration              Float
+  wordCount             Int
+  wordsPerMinute        Float
+  pitchVariation        Float?
+  volumeLevel           Float?
+  emotionalTone         String?     @db.VarChar(100)
+  confidenceLevel       Float?
+  hesitations           Int         @default(0)
+  fillerWords           Int         @default(0)
+  metadata              Json?
+  createdAt             DateTime    @default(now())
+
+  recording             ConversationRecording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+
+  @@index([recordingId])
+  @@index([companyId])
+  @@index([speaker])
+  @@index([startTime])
+  @@map("speech_patterns")
+}
+
+model AcknowledgementPattern {
+  id                    String      @id @default(uuid())
+  recordingId           String
+  companyId             String
+  speaker               SpeakerRole
+  acknowledgementText   String      @db.VarChar(500)
+  occurrenceTime        Float
+  duration              Float
+  language              String      @db.VarChar(10)
+  contextType           String?     @db.VarChar(100)
+  isEffective           Boolean     @default(true)
+  frequency             Int         @default(1)
+  metadata              Json?
+  createdAt             DateTime    @default(now())
+
+  recording             ConversationRecording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+
+  @@index([recordingId])
+  @@index([companyId])
+  @@index([speaker])
+  @@index([language])
+  @@index([acknowledgementText])
+  @@map("acknowledgement_patterns")
+}
+
+model TurnTakingPattern {
+  id                    String      @id @default(uuid())
+  recordingId           String
+  companyId             String
+  fromSpeaker           SpeakerRole
+  toSpeaker             SpeakerRole
+  transitionTime        Float
+  pauseBeforeTransition Int
+  wasInterrupted        Boolean     @default(false)
+  isSmooth              Boolean     @default(true)
+  contextBefore         String?     @db.Text
+  contextAfter          String?     @db.Text
+  metadata              Json?
+  createdAt             DateTime    @default(now())
+
+  recording             ConversationRecording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+
+  @@index([recordingId])
+  @@index([companyId])
+  @@index([fromSpeaker])
+  @@index([toSpeaker])
+  @@index([wasInterrupted])
+  @@map("turn_taking_patterns")
+}
+
+model InterruptionEvent {
+  id                    String          @id @default(uuid())
+  recordingId           String
+  companyId             String
+  interrupter           SpeakerRole
+  interrupted           SpeakerRole
+  occurrenceTime        Float
+  duration              Float
+  interruptionType      InterruptionType
+  wasRecovered          Boolean         @default(true)
+  impactLevel           String?         @db.VarChar(50)
+  contextBefore         String?         @db.Text
+  contextDuring         String?         @db.Text
+  contextAfter          String?         @db.Text
+  metadata              Json?
+  createdAt             DateTime        @default(now())
+
+  recording             ConversationRecording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+
+  @@index([recordingId])
+  @@index([companyId])
+  @@index([interrupter])
+  @@index([interrupted])
+  @@index([interruptionType])
+  @@map("interruption_events")
+}
+
+enum InterruptionType {
+  HARD_INTERRUPTION
+  SOFT_INTERRUPTION
+  OVERLAP
+  BACKCHANNEL
+  COMPLETION
+  CLARIFICATION
+}
+
+model LearningInsight {
+  id                    String      @id @default(uuid())
+  recordingId           String?
+  companyId             String
+  insightType           InsightType
+  category              String      @db.VarChar(100)
+  title                 String      @db.VarChar(500)
+  description           String      @db.Text
+  recommendation        String      @db.Text
+  confidence            Float
+  supportingData        Json
+  frequency             Int         @default(1)
+  priority              Int         @default(0)
+  isApplied             Boolean     @default(false)
+  appliedAt             DateTime?
+  metadata              Json?
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  recording             ConversationRecording? @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+
+  @@index([recordingId])
+  @@index([companyId])
+  @@index([insightType])
+  @@index([category])
+  @@index([priority])
+  @@index([isApplied])
+  @@map("learning_insights")
+}
+
+enum InsightType {
+  GREETING_STYLE
+  SPEAKING_SPEED
+  PAUSE_TIMING
+  TURN_TAKING
+  ACKNOWLEDGEMENT
+  QUESTION_TIMING
+  ANSWER_TIMING
+  OBJECTION_HANDLING
+  CLOSING_TECHNIQUE
+  CONVERSATION_FLOW
+  INTERRUPTION_HANDLING
+  LANGUAGE_PATTERN
+}
+
+model ConversationRule {
+  id                    String      @id @default(uuid())
+  companyId             String
+  ruleType              RuleCategory
+  name                  String      @db.VarChar(255)
+  description           String      @db.Text
+  condition             Json
+  action                Json
+  priority              Int         @default(0)
+  confidenceThreshold   Float       @default(0.7)
+  learnedFrom           String?     @db.VarChar(100)
+  evidenceCount         Int         @default(0)
+  successRate           Float?
+  isActive              Boolean     @default(true)
+  appliedCount          Int         @default(0)
+  metadata              Json?
+  createdBy             String?     @db.VarChar(255)
+  updatedBy             String?     @db.VarChar(255)
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  @@index([companyId])
+  @@index([ruleType])
+  @@index([priority])
+  @@index([isActive])
+  @@index([successRate])
+  @@map("conversation_rules")
+}
+
+enum RuleCategory {
+  WHEN_TO_SPEAK
+  WHEN_TO_STOP
+  WHEN_TO_WAIT
+  WHEN_TO_ANSWER
+  HOW_TO_ANSWER
+  PAUSE_DURATION
+  ACKNOWLEDGEMENT_USE
+  TURN_TAKING
+  INTERRUPTION_RECOVERY
+  LANGUAGE_SWITCH
+  GREETING_STYLE
+  CLOSING_STYLE
+}
+
+model ResponseStrategy {
+  id                    String      @id @default(uuid())
+  companyId             String
+  triggerIntent         String      @db.VarChar(100)
+  triggerContext        Json?
+  strategyType          String      @db.VarChar(100)
+  strategyName          String      @db.VarChar(255)
+  description           String      @db.Text
+  responseTemplate      String      @db.LongText
+  pauseBefore           Int         @default(0)
+  pauseAfter            Int         @default(0)
+  speakingSpeed         Float       @default(1.0)
+  emotionalTone         String?     @db.VarChar(100)
+  languageStyle         String?     @db.VarChar(100)
+  successRate           Float?
+  usageCount            Int         @default(0)
+  learnedFrom           String?     @db.VarChar(100)
+  isActive              Boolean     @default(true)
+  priority              Int         @default(0)
+  metadata              Json?
+  createdBy             String?     @db.VarChar(255)
+  updatedBy             String?     @db.VarChar(255)
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  @@index([companyId])
+  @@index([triggerIntent])
+  @@index([strategyType])
+  @@index([isActive])
+  @@index([successRate])
+  @@index([priority])
+  @@map("response_strategies")
+}
+
+model ConversationBehaviorProfile {
+  id                        String   @id @default(uuid())
+  companyId                 String   @unique
+  profileName               String   @db.VarChar(255)
+  description               String?  @db.Text
+  greetingStyle             Json
+  speakingSpeedRange        Json
+  pauseTimingRules          Json
+  turnTakingStrategy        Json
+  acknowledgementLibrary    Json
+  interruptionHandling      Json
+  questionTimingRules       Json
+  answerStrategy            Json
+  closingStyle              Json
+  languageSwitchingRules    Json?
+  emotionalToneGuidelines   Json?
+  conversationFlowRules     Json
+  learnedFromRecordings     Int      @default(0)
+  confidenceScore           Float
+  lastUpdatedFrom           String?  @db.VarChar(255)
+  metadata                  Json?
+  createdBy                 String?  @db.VarChar(255)
+  updatedBy                 String?  @db.VarChar(255)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([confidenceScore])
+  @@map("conversation_behavior_profiles")
+}
+
+model LearningStat {
+  id                    String   @id @default(uuid())
+  companyId             String
+  date                  DateTime @db.Date
+  statType              String   @db.VarChar(100)
+  statName              String   @db.VarChar(100)
+  statValue             Float
+  count                 Int      @default(0)
+  dimension1            String?  @db.VarChar(255)
+  dimension2            String?  @db.VarChar(255)
+  metadata              Json?
+  createdAt             DateTime @default(now())
+
+  @@index([companyId])
+  @@index([date])
+  @@index([statType])
+  @@index([statName])
+  @@map("learning_stats")
+}
+
+model ScriptUpload {
+  id                    String          @id @default(uuid())
+  companyId             String
+  name                  String          @db.VarChar(500)
+  filePath              String          @db.VarChar(1000)
+  fileType              String          @db.VarChar(50)
+  content               String          @db.LongText
+  language              String          @default("en") @db.VarChar(10)
+  processingStatus      ScriptProcessingStatus @default(PENDING)
+  parsedStructure       Json?
+  extractedIntents      Json?
+  extractedResponses    Json?
+  metadata              Json?
+  uploadedBy            String?         @db.VarChar(255)
+  processedAt           DateTime?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  @@index([companyId])
+  @@index([processingStatus])
+  @@index([language])
+  @@index([createdAt])
+  @@map("script_uploads")
+}
+
+enum ScriptProcessingStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// ============================================
+// PHASE 4.3.3 - CONVERSATION LEARNING MODELS
+// ============================================
+
+model ConversationScript {
+  id                    String          @id @default(uuid())
+  companyId             String
+  name                  String          @db.VarChar(500)
+  language              String          @default("MIXED") @db.VarChar(50)
+  scriptType            String          @default("SALES") @db.VarChar(100)
+  content               String          @db.LongText
+  metadata              Json?
+  isActive              Boolean         @default(true)
+  uploadedBy            String?         @db.VarChar(255)
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  sections              ScriptSection[]
+
+  @@index([companyId])
+  @@index([language])
+  @@index([scriptType])
+  @@index([isActive])
+  @@map("conversation_scripts")
+}
+
+model ScriptSection {
+  id                    String   @id @default(uuid())
+  scriptId              String
+  companyId             String
+  sectionType           String   @db.VarChar(100)
+  orderIndex            Int
+  content               String   @db.LongText
+  expectedDuration      Int      @default(0)
+  keyPhrases            Json?
+  isRequired            Boolean  @default(false)
+  isActive              Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  script                ConversationScript @relation(fields: [scriptId], references: [id], onDelete: Cascade)
+
+  @@index([scriptId])
+  @@index([companyId])
+  @@index([sectionType])
+  @@index([orderIndex])
+  @@map("script_sections")
+}
+
+model KnowledgeEntry {
+  id                    String   @id @default(uuid())
+  companyId             String
+  question              String   @db.LongText
+  answer                String   @db.LongText
+  category              String?  @db.VarChar(100)
+  language              String   @default("en") @db.VarChar(50)
+  keywords              Json?
+  usageCount            Int      @default(0)
+  lastUsedAt            DateTime?
+  isActive              Boolean  @default(true)
+  createdBy             String?  @db.VarChar(255)
+  updatedBy             String?  @db.VarChar(255)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([category])
+  @@index([language])
+  @@index([isActive])
+  @@index([usageCount])
+  @@map("knowledge_entries")
+}
+
+// ============================================
 // ENTERPRISE CONVERSATION MANAGER - Phase 3.6
 // ============================================
 
@@ -3710,4 +4305,551 @@ enum LogLevel {
   WARN
   ERROR
   FATAL
+}
+
+
+// ============================================
+// DATASET PROCESSING PIPELINE - Phase 4.3.1
+// ============================================
+
+model DatasetRecord {
+  id                String            @id @default(uuid())
+  companyId         String
+  fileName          String            @db.VarChar(500)
+  originalFileName  String            @db.VarChar(500)
+  fileSize          BigInt
+  filePath          String            @db.VarChar(1000)
+  fileHash          String            @db.VarChar(64)
+  fileType          String            @default("audio") @db.VarChar(50)
+  mimeType          String            @db.VarChar(200)
+  status            DatasetRecordStatus @default(PENDING)
+  processingStage   String?           @db.VarChar(100)
+  uploadProgress    Int               @default(0)
+  processingProgress Int              @default(0)
+  errorMessage      String?           @db.Text
+  uploadedBy        String?           @db.VarChar(255)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  deletedAt         DateTime?
+
+  company        Company          @relation("CompanyDatasets", fields: [companyId], references: [id], onDelete: Cascade)
+  recordings     Recording[]
+  transcript     Transcript?
+  conversation   Conversation?
+  entities       ExtractedEntity[]
+  intents        DetectedIntent[]
+  jobs           DatasetJob[]
+  logs           ProcessingLog[]
+
+  @@unique([companyId, fileHash])
+  @@index([companyId])
+  @@index([status])
+  @@index([processingStage])
+  @@index([fileHash])
+  @@index([createdAt])
+  @@map("dataset_records")
+}
+
+enum DatasetRecordStatus {
+  PENDING
+  UPLOADING
+  UPLOADED
+  VALIDATING
+  VALIDATED
+  PROCESSING
+  PROCESSED
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model Recording {
+  id                String   @id @default(uuid())
+  datasetRecordId   String
+  phoneNumber       String?  @db.VarChar(50)
+  duration          Float?
+  sampleRate        Int?
+  channels          Int?
+  bitrate           Int?
+  noiseLevel        Float?
+  silencePercent    Float?
+  isCorrupted       Boolean  @default(false)
+  validationStatus  String   @default("PENDING") @db.VarChar(50)
+  validationReport  Json?
+  metadata          Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  datasetRecord DatasetRecord @relation(fields: [datasetRecordId], references: [id], onDelete: Cascade)
+
+  @@unique([datasetRecordId])
+  @@index([datasetRecordId])
+  @@index([phoneNumber])
+  @@index([validationStatus])
+  @@map("recordings")
+}
+
+model Transcript {
+  id                 String   @id @default(uuid())
+  datasetRecordId    String   @unique
+  rawText            String   @db.LongText
+  processedText      String?  @db.LongText
+  language           String?  @db.VarChar(10)
+  languageConfidence Float?
+  detectedLanguages  Json?
+  wordCount          Int?
+  characterCount     Int?
+  speakerCount       Int?
+  transcriptionEngine String? @db.VarChar(100)
+  processingTime     Float?
+  confidence         Float?
+  segments           Json?
+  metadata           Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  datasetRecord DatasetRecord @relation(fields: [datasetRecordId], references: [id], onDelete: Cascade)
+  diarization   Diarization?
+
+  @@index([datasetRecordId])
+  @@index([language])
+  @@map("transcripts")
+}
+
+model Diarization {
+  id              String   @id @default(uuid())
+  transcriptId    String   @unique
+  speakers        Json
+  segments        Json
+  speakerCount    Int
+  agentSegments   Int?
+  customerSegments Int?
+  unknownSegments Int?
+  processingTime  Float?
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  transcript Transcript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+
+  @@index([transcriptId])
+  @@map("diarizations")
+}
+
+model Conversation {
+  id              String   @id @default(uuid())
+  datasetRecordId String   @unique
+  structuredData  Json
+  messageCount    Int
+  agentMessages   Int?
+  customerMessages Int?
+  turnCount       Int?
+  averageTurnLength Float?
+  conversationFlow Json?
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  datasetRecord DatasetRecord @relation(fields: [datasetRecordId], references: [id], onDelete: Cascade)
+
+  @@index([datasetRecordId])
+  @@map("conversations")
+}
+
+model ExtractedEntity {
+  id              String   @id @default(uuid())
+  datasetRecordId String
+  entityType      String   @db.VarChar(100)
+  entityValue     String   @db.VarChar(500)
+  confidence      Float?
+  context         String?  @db.Text
+  isMasked        Boolean  @default(false)
+  maskedValue     String?  @db.VarChar(500)
+  metadata        Json?
+  createdAt       DateTime @default(now())
+
+  datasetRecord DatasetRecord @relation(fields: [datasetRecordId], references: [id], onDelete: Cascade)
+
+  @@index([datasetRecordId])
+  @@index([entityType])
+  @@map("extracted_entities")
+}
+
+model DetectedIntent {
+  id              String   @id @default(uuid())
+  datasetRecordId String
+  intentType      String   @db.VarChar(100)
+  confidence      Float
+  context         String?  @db.Text
+  metadata        Json?
+  createdAt       DateTime @default(now())
+
+  datasetRecord DatasetRecord @relation(fields: [datasetRecordId], references: [id], onDelete: Cascade)
+
+  @@index([datasetRecordId])
+  @@index([intentType])
+  @@map("detected_intents")
+}
+
+model LeadClassification {
+  id              String   @id @default(uuid())
+  datasetRecordId String?
+  classification  String   @db.VarChar(50)
+  score           Float
+  confidence      Float
+  factors         Json?
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([datasetRecordId])
+  @@index([classification])
+  @@map("lead_classifications")
+}
+
+model DatasetJob {
+  id              String          @id @default(uuid())
+  datasetRecordId String
+  jobType         DatasetJobType
+  status          DatasetJobStatus @default(PENDING)
+  priority        Int             @default(0)
+  attempts        Int             @default(0)
+  maxAttempts     Int             @default(3)
+  startedAt       DateTime?
+  completedAt     DateTime?
+  errorMessage    String?         @db.Text
+  result          Json?
+  metadata        Json?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  datasetRecord DatasetRecord @relation(fields: [datasetRecordId], references: [id], onDelete: Cascade)
+
+  @@index([datasetRecordId])
+  @@index([jobType])
+  @@index([status])
+  @@index([priority])
+  @@index([createdAt])
+  @@map("dataset_jobs")
+}
+
+enum DatasetJobType {
+  VALIDATION
+  TRANSCRIPTION
+  DIARIZATION
+  CONVERSATION_PARSING
+  ENTITY_EXTRACTION
+  INTENT_DETECTION
+  LEAD_CLASSIFICATION
+  PII_MASKING
+  EXPORT
+}
+
+enum DatasetJobStatus {
+  PENDING
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+  RETRYING
+}
+
+model ProcessingLog {
+  id              String   @id @default(uuid())
+  datasetRecordId String
+  stage           String   @db.VarChar(100)
+  level           String   @db.VarChar(50)
+  message         String   @db.Text
+  details         Json?
+  timestamp       DateTime @default(now())
+
+  datasetRecord DatasetRecord @relation(fields: [datasetRecordId], references: [id], onDelete: Cascade)
+
+  @@index([datasetRecordId])
+  @@index([stage])
+  @@index([level])
+  @@index([timestamp])
+  @@map("processing_logs")
+}
+
+model DatasetExport {
+  id          String            @id @default(uuid())
+  companyId   String
+  name        String            @db.VarChar(255)
+  description String?           @db.Text
+  format      DatasetExportFormat
+  filters     Json?
+  recordCount Int?
+  fileSize    BigInt?
+  filePath    String?           @db.VarChar(1000)
+  status      String            @default("PENDING") @db.VarChar(50)
+  generatedBy String?           @db.VarChar(255)
+  createdAt   DateTime          @default(now())
+  completedAt DateTime?
+  expiresAt   DateTime?
+  downloadCount Int             @default(0)
+  lastDownloadAt DateTime?
+  metadata    Json?
+
+  @@index([companyId])
+  @@index([status])
+  @@index([format])
+  @@index([createdAt])
+  @@map("dataset_exports")
+}
+
+enum DatasetExportFormat {
+  JSON
+  JSONL
+  CSV
+  SQLITE
+  PARQUET
+}
+
+// ============================================
+// CONVERSATION INTELLIGENCE ENGINE - Phase 4.3.2
+// ============================================
+
+model DatasetConversationAnalysis {
+  id                    String   @id @default(uuid())
+  datasetRecordId       String   @unique
+  companyId             String
+  conversationScore     Float?
+  professionalScore     Float?
+  naturalnessScore      Float?
+  confidenceScore       Float?
+  salesScore            Float?
+  closingScore          Float?
+  sentimentScore        Float?
+  sentimentLabel        String?  @db.VarChar(50)
+  dominantEmotion       String?  @db.VarChar(50)
+  overallQuality        String?  @db.VarChar(50)
+  analysisDetails       Json?
+  metadata              Json?
+  analyzedAt            DateTime @default(now())
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  timeline              AnalysisTimeline[]
+  intents               AnalysisIntent[]
+  entities              AnalysisEntity[]
+  objections            AnalysisObjection[]
+  emotions              AnalysisEmotion[]
+  leadScore             AnalysisLeadScore?
+  responseScores        AnalysisResponseScore[]
+
+  @@index([datasetRecordId])
+  @@index([companyId])
+  @@index([conversationScore])
+  @@index([overallQuality])
+  @@index([analyzedAt])
+  @@map("conversation_analysis")
+}
+
+model AnalysisTimeline {
+  id              String   @id @default(uuid())
+  analysisId      String
+  sequence        Int
+  phase           String   @db.VarChar(100)
+  startTime       Float?
+  endTime         Float?
+  duration        Float?
+  speaker         String   @db.VarChar(50)
+  text            String   @db.Text
+  metadata        Json?
+  createdAt       DateTime @default(now())
+
+  analysis        DatasetConversationAnalysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+
+  @@index([analysisId])
+  @@index([phase])
+  @@index([sequence])
+  @@map("conversation_analysis_timeline")
+}
+
+model AnalysisIntent {
+  id              String   @id @default(uuid())
+  analysisId      String
+  intentType      String   @db.VarChar(100)
+  confidence      Float
+  context         String?  @db.Text
+  position        Int?
+  metadata        Json?
+  detectedAt      DateTime @default(now())
+
+  analysis        DatasetConversationAnalysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+
+  @@index([analysisId])
+  @@index([intentType])
+  @@index([confidence])
+  @@map("conversation_analysis_intents")
+}
+
+model AnalysisEntity {
+  id              String   @id @default(uuid())
+  analysisId      String
+  entityType      String   @db.VarChar(100)
+  entityValue     String   @db.VarChar(500)
+  confidence      Float?
+  context         String?  @db.Text
+  position        Int?
+  metadata        Json?
+  extractedAt     DateTime @default(now())
+
+  analysis        DatasetConversationAnalysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+
+  @@index([analysisId])
+  @@index([entityType])
+  @@map("conversation_analysis_entities")
+}
+
+model AnalysisObjection {
+  id              String   @id @default(uuid())
+  analysisId      String
+  objectionType   String   @db.VarChar(100)
+  objectionText   String   @db.Text
+  agentResponse   String?  @db.Text
+  wasResolved     Boolean  @default(false)
+  resolutionScore Float?
+  position        Int?
+  metadata        Json?
+  detectedAt      DateTime @default(now())
+
+  analysis        DatasetConversationAnalysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+
+  @@index([analysisId])
+  @@index([objectionType])
+  @@index([wasResolved])
+  @@map("conversation_analysis_objections")
+}
+
+model AnalysisEmotion {
+  id              String   @id @default(uuid())
+  analysisId      String
+  emotionType     String   @db.VarChar(50)
+  intensity       Float?
+  position        Int?
+  context         String?  @db.Text
+  metadata        Json?
+  detectedAt      DateTime @default(now())
+
+  analysis        DatasetConversationAnalysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+
+  @@index([analysisId])
+  @@index([emotionType])
+  @@map("conversation_analysis_emotions")
+}
+
+model AnalysisLeadScore {
+  id              String   @id @default(uuid())
+  analysisId      String   @unique
+  leadCategory    String   @db.VarChar(50)
+  score           Float
+  confidence      Float
+  factors         Json?
+  scoringDetails  Json?
+  recommendedAction String? @db.Text
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  analysis        DatasetConversationAnalysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+
+  @@index([analysisId])
+  @@index([leadCategory])
+  @@index([score])
+  @@map("conversation_analysis_lead_scores")
+}
+
+model AnalysisResponseScore {
+  id              String   @id @default(uuid())
+  analysisId      String
+  responseType    String   @db.VarChar(100)
+  agentText       String   @db.Text
+  effectivenessScore Float
+  customerReaction String? @db.VarChar(50)
+  position        Int?
+  metadata        Json?
+  createdAt       DateTime @default(now())
+
+  analysis        DatasetConversationAnalysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+
+  @@index([analysisId])
+  @@index([responseType])
+  @@index([effectivenessScore])
+  @@map("conversation_analysis_response_scores")
+}
+
+model KnowledgeItem {
+  id              String   @id @default(uuid())
+  companyId       String
+  category        String   @db.VarChar(100)
+  question        String   @db.Text
+  answer          String   @db.Text
+  context         String?  @db.LongText
+  intent          String?  @db.VarChar(100)
+  confidence      Float
+  usageCount      Int      @default(0)
+  successRate     Float?
+  sourceType      String   @db.VarChar(50)
+  sourceId        String?  @db.VarChar(255)
+  tags            Json?
+  metadata        Json?
+  isActive        Boolean  @default(true)
+  createdBy       String?  @db.VarChar(255)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([category])
+  @@index([intent])
+  @@index([confidence])
+  @@index([isActive])
+  @@map("knowledge_items")
+}
+
+model QuestionLibrary {
+  id              String   @id @default(uuid())
+  companyId       String
+  question        String   @db.Text
+  questionType    String   @db.VarChar(100)
+  askedBy         String   @db.VarChar(50)
+  frequency       Int      @default(1)
+  bestAnswer      String?  @db.Text
+  alternativeAnswers Json?
+  successRate     Float?
+  averageResponseTime Float?
+  tags            Json?
+  metadata        Json?
+  firstAskedAt    DateTime @default(now())
+  lastAskedAt     DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([questionType])
+  @@index([askedBy])
+  @@index([frequency])
+  @@map("question_library")
+}
+
+model ConversationInsight {
+  id              String   @id @default(uuid())
+  companyId       String
+  insightType     String   @db.VarChar(100)
+  title           String   @db.VarChar(255)
+  description     String   @db.Text
+  impact          String   @db.VarChar(50)
+  actionable      Boolean  @default(true)
+  recommendation  String?  @db.Text
+  dataPoints      Json?
+  metadata        Json?
+  createdAt       DateTime @default(now())
+
+  @@index([companyId])
+  @@index([insightType])
+  @@index([impact])
+  @@index([createdAt])
+  @@map("conversation_insights")
 }

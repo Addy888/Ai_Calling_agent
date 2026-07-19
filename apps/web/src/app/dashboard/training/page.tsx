@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -10,6 +11,14 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -18,496 +27,336 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Database,
-  CheckCircle,
-  AlertTriangle,
-  TrendingUp,
-  FileCheck,
-  Activity,
-  BarChart3,
-  Download,
+  Search,
   Plus,
-  RefreshCw,
+  Eye,
+  CheckCircle,
+  XCircle,
+  Clock,
+  FileText,
+  BarChart3,
+  Settings,
+  Filter,
 } from 'lucide-react';
 
-export default function TrainingDashboard() {
-  const [datasets, setDatasets] = useState<any[]>([]);
-  const [stats, setStats] = useState<any>(null);
-  const [readiness, setReadiness] = useState<any>(null);
-  const [trainingJobs, setTrainingJobs] = useState<any[]>([]);
-  const [versions, setVersions] = useState<any[]>([]);
+interface Dataset {
+  id: string;
+  name: string;
+  datasetType: string;
+  version: string;
+  recordCount: number;
+  validRecordCount: number;
+  status: string;
+  language: string;
+  createdAt: string;
+  lastValidatedAt?: string;
+}
+
+export default function TrainingCenterPage() {
+  const router = useRouter();
+  const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => {
-    fetchTrainingData();
-  }, []);
+    fetchDatasets();
+  }, [search, typeFilter, statusFilter]);
 
-  const fetchTrainingData = async () => {
-    setLoading(true);
+  const fetchDatasets = async () => {
     try {
-      const [datasetsRes, statsRes, readinessRes, jobsRes, versionsRes] = await Promise.all([
-        fetch('/api/training/datasets'),
-        fetch('/api/training/datasets/stats'),
-        fetch('/api/training/readiness'),
-        fetch('/api/training/jobs'),
-        fetch('/api/training/versions'),
-      ]);
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (search) params.append('search', search);
+      if (typeFilter !== 'all') params.append('datasetType', typeFilter);
+      if (statusFilter !== 'all') params.append('status', statusFilter);
 
-      const [datasetsData, statsData, readinessData, jobsData, versionsData] = await Promise.all([
-        datasetsRes.json(),
-        statsRes.json(),
-        readinessRes.json(),
-        jobsRes.json(),
-        versionsRes.json(),
-      ]);
+      const response = await fetch(`/api/ai-agent/training-datasets?${params}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
 
-      setDatasets(datasetsData);
-      setStats(statsData);
-      setReadiness(readinessData);
-      setTrainingJobs(jobsData);
-      setVersions(versionsData);
+      if (response.ok) {
+        const result = await response.json();
+        setDatasets(result.data || []);
+      }
     } catch (error) {
-      console.error('Error fetching training data:', error);
+      console.error('Failed to fetch datasets:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const getReadinessColor = (score: number) => {
-    if (score >= 85) return 'text-green-600';
-    if (score >= 70) return 'text-yellow-600';
-    return 'text-red-600';
-  };
-
-  const getReadinessStatus = (score: number) => {
-    if (score >= 85) return <Badge className="bg-green-500">Ready</Badge>;
-    if (score >= 70) return <Badge className="bg-yellow-500">Needs Work</Badge>;
-    return <Badge className="bg-red-500">Not Ready</Badge>;
-  };
-
   const getStatusBadge = (status: string) => {
-    const statusColors: Record<string, string> = {
-      DRAFT: 'bg-gray-500',
-      VALIDATING: 'bg-blue-500',
-      VALIDATED: 'bg-green-500',
-      PUBLISHED: 'bg-purple-500',
-      ARCHIVED: 'bg-gray-400',
-      PENDING: 'bg-yellow-500',
-      RUNNING: 'bg-blue-500',
-      COMPLETED: 'bg-green-500',
-      FAILED: 'bg-red-500',
+    const variants: Record<string, { variant: any; label: string }> = {
+      DRAFT: { variant: 'secondary', label: 'Draft' },
+      VALIDATING: { variant: 'outline', label: 'Validating' },
+      VALIDATED: { variant: 'default', label: 'Validated' },
+      PUBLISHED: { variant: 'default', label: 'Published' },
+      ARCHIVED: { variant: 'secondary', label: 'Archived' },
     };
 
-    return <Badge className={statusColors[status] || 'bg-gray-500'}>{status}</Badge>;
+    const config = variants[status] || { variant: 'secondary', label: status };
+    return <Badge variant={config.variant as any}>{config.label}</Badge>;
   };
 
-  if (loading) {
+  const getTypeBadge = (type: string) => {
+    const colors: Record<string, string> = {
+      CONVERSATION: 'bg-blue-100 text-blue-800',
+      KNOWLEDGE: 'bg-green-100 text-green-800',
+      PROMPT: 'bg-purple-100 text-purple-800',
+      SCRIPT: 'bg-orange-100 text-orange-800',
+      FAQ: 'bg-pink-100 text-pink-800',
+    };
+
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+      <Badge className={colors[type] || 'bg-gray-100 text-gray-800'}>
+        {type.replace('_', ' ')}
+      </Badge>
+    );
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  const calculateReadiness = (dataset: Dataset) => {
+    const validPercentage =
+      dataset.recordCount > 0 ? (dataset.validRecordCount / dataset.recordCount) * 100 : 0;
+
+    if (validPercentage >= 90 && dataset.status === 'VALIDATED') return 'high';
+    if (validPercentage >= 70) return 'medium';
+    return 'low';
+  };
+
+  const getReadinessBadge = (dataset: Dataset) => {
+    const readiness = calculateReadiness(dataset);
+    const config = {
+      high: { icon: CheckCircle, color: 'text-green-600', label: 'Ready' },
+      medium: { icon: Clock, color: 'text-yellow-600', label: 'Needs Review' },
+      low: { icon: XCircle, color: 'text-red-600', label: 'Not Ready' },
+    };
+
+    const { icon: Icon, color, label } = config[readiness];
+    return (
+      <div className="flex items-center gap-2">
+        <Icon className={`h-4 w-4 ${color}`} />
+        <span className={`text-sm ${color}`}>{label}</span>
       </div>
     );
-  }
+  };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="container mx-auto py-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">AI Training Platform</h1>
-          <p className="text-gray-500 mt-1">
-            Manage datasets, validate data, and prepare AI for production
+          <h1 className="text-3xl font-bold tracking-tight">AI Training Center</h1>
+          <p className="text-muted-foreground">
+            Manage datasets and configure training parameters
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={fetchTrainingData}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            New Dataset
-          </Button>
-        </div>
+        <Button onClick={() => router.push('/dashboard/training/create')}>
+          <Plus className="h-4 w-4 mr-2" />
+          Create Dataset
+        </Button>
       </div>
 
-      {/* AI Readiness Score */}
-      <Card className="border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-purple-50">
+      {/* Stats Overview */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Datasets</CardTitle>
+            <Database className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{datasets.length}</div>
+            <p className="text-xs text-muted-foreground">Active training datasets</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Validated</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {datasets.filter((d) => d.status === 'VALIDATED').length}
+            </div>
+            <p className="text-xs text-muted-foreground">Ready for training</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Samples</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {datasets.reduce((sum, d) => sum + d.recordCount, 0).toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground">Across all datasets</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Valid Samples</CardTitle>
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {datasets.reduce((sum, d) => sum + d.validRecordCount, 0).toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground">Quality verified</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5" />
-            AI Readiness Score
-          </CardTitle>
-          <CardDescription>Overall preparation status for production deployment</CardDescription>
+          <CardTitle>Dataset Library</CardTitle>
+          <CardDescription>Browse and manage your training datasets</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="text-center">
-              <div className={`text-5xl font-bold ${getReadinessColor(readiness?.overallReadiness || 0)}`}>
-                {readiness?.overallReadiness?.toFixed(1) || '0.0'}%
-              </div>
-              <div className="mt-2">{getReadinessStatus(readiness?.overallReadiness || 0)}</div>
-              <div className="text-sm text-gray-500 mt-1">Overall Readiness</div>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search datasets..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-10"
+              />
             </div>
 
-            <div className="col-span-3 space-y-3">
-              <div className="space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span>Knowledge Base</span>
-                  <span className="font-semibold">{readiness?.knowledgeReadiness?.toFixed(1) || 0}%</span>
-                </div>
-                <Progress value={readiness?.knowledgeReadiness || 0} />
-              </div>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-[180px]">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Dataset Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="CONVERSATION">Conversation</SelectItem>
+                <SelectItem value="KNOWLEDGE">Knowledge</SelectItem>
+                <SelectItem value="PROMPT">Prompt</SelectItem>
+                <SelectItem value="SCRIPT">Script</SelectItem>
+                <SelectItem value="FAQ">FAQ</SelectItem>
+              </SelectContent>
+            </Select>
 
-              <div className="space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span>Conversation Training</span>
-                  <span className="font-semibold">{readiness?.conversationReadiness?.toFixed(1) || 0}%</span>
-                </div>
-                <Progress value={readiness?.conversationReadiness || 0} />
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span>Prompts & Scripts</span>
-                  <span className="font-semibold">{readiness?.promptReadiness?.toFixed(1) || 0}%</span>
-                </div>
-                <Progress value={readiness?.promptReadiness || 0} />
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span>Decision Engine</span>
-                  <span className="font-semibold">{readiness?.decisionReadiness?.toFixed(1) || 0}%</span>
-                </div>
-                <Progress value={readiness?.decisionReadiness || 0} />
-              </div>
-            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="DRAFT">Draft</SelectItem>
+                <SelectItem value="VALIDATED">Validated</SelectItem>
+                <SelectItem value="PUBLISHED">Published</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          {readiness?.blockers && readiness.blockers.length > 0 && (
-            <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <AlertTriangle className="h-5 w-5 text-red-600" />
-                <span className="font-semibold text-red-900">Blockers ({readiness.blockers.length})</span>
-              </div>
-              <div className="space-y-1">
-                {readiness.blockers.map((blocker: any, index: number) => (
-                  <div key={index} className="text-sm text-red-800">
-                    • {blocker.message}
-                  </div>
-                ))}
-              </div>
+          {/* Dataset Table */}
+          {loading ? (
+            <div className="space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
             </div>
-          )}
-
-          {readiness?.warnings && readiness.warnings.length > 0 && (
-            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <AlertTriangle className="h-5 w-5 text-yellow-600" />
-                <span className="font-semibold text-yellow-900">Warnings ({readiness.warnings.length})</span>
-              </div>
-              <div className="space-y-1">
-                {readiness.warnings.map((warning: any, index: number) => (
-                  <div key={index} className="text-sm text-yellow-800">
-                    • {warning.message}
-                  </div>
-                ))}
-              </div>
+          ) : datasets.length === 0 ? (
+            <div className="text-center py-12">
+              <Database className="mx-auto h-12 w-12 text-muted-foreground" />
+              <h3 className="mt-4 text-lg font-semibold">No datasets found</h3>
+              <p className="text-muted-foreground">
+                Create your first training dataset to get started
+              </p>
+              <Button className="mt-4" onClick={() => router.push('/dashboard/training/create')}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Dataset
+              </Button>
+            </div>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Dataset Name</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Version</TableHead>
+                    <TableHead>Samples</TableHead>
+                    <TableHead>Language</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Readiness</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {datasets.map((dataset) => (
+                    <TableRow key={dataset.id}>
+                      <TableCell className="font-medium">{dataset.name}</TableCell>
+                      <TableCell>{getTypeBadge(dataset.datasetType)}</TableCell>
+                      <TableCell>
+                        <code className="text-xs bg-muted px-2 py-1 rounded">
+                          {dataset.version}
+                        </code>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{dataset.recordCount.toLocaleString()}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {dataset.validRecordCount} valid
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{dataset.language.toUpperCase()}</Badge>
+                      </TableCell>
+                      <TableCell>{getStatusBadge(dataset.status)}</TableCell>
+                      <TableCell>{getReadinessBadge(dataset)}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {formatDate(dataset.createdAt)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => router.push(`/dashboard/training/${dataset.id}`)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => router.push(`/dashboard/training/${dataset.id}/config`)}
+                          >
+                            <Settings className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           )}
         </CardContent>
       </Card>
-
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <Database className="h-4 w-4" />
-              Total Datasets
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{stats?.totalDatasets || 0}</div>
-            <p className="text-xs text-gray-500 mt-1">
-              {stats?.totalRecords?.toLocaleString() || 0} records
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <CheckCircle className="h-4 w-4" />
-              Valid Records
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-green-600">
-              {stats?.validRecords?.toLocaleString() || 0}
-            </div>
-            <Progress 
-              value={stats?.totalRecords > 0 ? (stats?.validRecords / stats?.totalRecords) * 100 : 0} 
-              className="mt-2" 
-            />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Average Quality
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className={`text-3xl font-bold ${getReadinessColor(stats?.averageQuality || 0)}`}>
-              {stats?.averageQuality?.toFixed(1) || '0.0'}%
-            </div>
-            <Progress value={stats?.averageQuality || 0} className="mt-2" />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <FileCheck className="h-4 w-4" />
-              Coverage
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className={`text-3xl font-bold ${getReadinessColor(stats?.averageCoverage || 0)}`}>
-              {stats?.averageCoverage?.toFixed(1) || '0.0'}%
-            </div>
-            <Progress value={stats?.averageCoverage || 0} className="mt-2" />
-          </CardContent>
-        </Card>
-      </div>
-
-      <Tabs defaultValue="datasets" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="datasets">Datasets</TabsTrigger>
-          <TabsTrigger value="jobs">Training Jobs</TabsTrigger>
-          <TabsTrigger value="versions">Versions</TabsTrigger>
-          <TabsTrigger value="validation">Validation</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="datasets" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <div>
-                  <CardTitle>Training Datasets</CardTitle>
-                  <CardDescription>Manage and organize training data</CardDescription>
-                </div>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Dataset
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Records</TableHead>
-                    <TableHead>Valid</TableHead>
-                    <TableHead>Version</TableHead>
-                    <TableHead>Updated</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {datasets.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={8} className="text-center text-gray-500 py-8">
-                        No datasets found. Create your first dataset to get started.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    datasets.map((dataset: any) => (
-                      <TableRow key={dataset.id}>
-                        <TableCell className="font-medium">{dataset.name}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{dataset.datasetType}</Badge>
-                        </TableCell>
-                        <TableCell>{getStatusBadge(dataset.status)}</TableCell>
-                        <TableCell>{dataset.recordCount?.toLocaleString()}</TableCell>
-                        <TableCell className="text-green-600">{dataset.validRecordCount}</TableCell>
-                        <TableCell>{dataset.version}</TableCell>
-                        <TableCell>
-                          {new Date(dataset.updatedAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="sm">View</Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="jobs" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <div>
-                  <CardTitle>Training Jobs</CardTitle>
-                  <CardDescription>Monitor dataset validation and training progress</CardDescription>
-                </div>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Training Job
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Job Name</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Progress</TableHead>
-                    <TableHead>Started</TableHead>
-                    <TableHead>Completed</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {trainingJobs.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center text-gray-500 py-8">
-                        No training jobs yet. Create a job to validate and prepare datasets.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    trainingJobs.map((job: any) => (
-                      <TableRow key={job.id}>
-                        <TableCell className="font-medium">{job.jobName}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{job.jobType}</Badge>
-                        </TableCell>
-                        <TableCell>{getStatusBadge(job.status)}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Progress value={job.progress || 0} className="w-20" />
-                            <span className="text-sm">{job.progress?.toFixed(0) || 0}%</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {job.startedAt ? new Date(job.startedAt).toLocaleString() : '-'}
-                        </TableCell>
-                        <TableCell>
-                          {job.completedAt ? new Date(job.completedAt).toLocaleString() : '-'}
-                        </TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="sm">View</Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="versions" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <div>
-                  <CardTitle>Training Versions</CardTitle>
-                  <CardDescription>Track AI training versions and releases</CardDescription>
-                </div>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Version
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Version</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Readiness</TableHead>
-                    <TableHead>Active</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {versions.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center text-gray-500 py-8">
-                        No training versions yet. Complete training jobs to create versions.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    versions.map((version: any) => (
-                      <TableRow key={version.id}>
-                        <TableCell className="font-medium">{version.version}</TableCell>
-                        <TableCell>{version.versionName}</TableCell>
-                        <TableCell>{getStatusBadge(version.status)}</TableCell>
-                        <TableCell>
-                          {version.readinessScore ? (
-                            <span className={getReadinessColor(version.readinessScore)}>
-                              {version.readinessScore.toFixed(1)}%
-                            </span>
-                          ) : (
-                            '-'
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {version.isCurrent && <Badge className="bg-green-500">Current</Badge>}
-                          {version.isActive && !version.isCurrent && (
-                            <Badge className="bg-blue-500">Active</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {new Date(version.createdAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="sm">View</Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="validation" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Validation Reports</CardTitle>
-              <CardDescription>Review data quality and validation results</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center text-gray-500 py-8">
-                <FileCheck className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                <p>No validation reports available</p>
-                <p className="text-sm mt-2">Run dataset validations to see reports here</p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
     </div>
   );
 }
