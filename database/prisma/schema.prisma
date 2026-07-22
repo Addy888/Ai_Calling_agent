@@ -54,6 +54,7 @@ model Company {
   voiceConfiguration VoiceConfiguration?
   voiceHistory      VoiceHistory[]
   datasets          DatasetRecord[] @relation("CompanyDatasets")
+  modelRegistry     ModelRegistry[] @relation("ModelRegistryToCompany")
 
   @@index([email])
   @@index([isActive])
@@ -3454,6 +3455,7 @@ model TrainingDataset {
   validations           DatasetValidation[]
   coverage              DatasetCoverage[]
   trainingJobs          TrainingJob[]
+  modelSelections       TrainingModelSelection[] @relation("ModelSelectionToDataset")
 
   @@index([companyId])
   @@index([datasetType])
@@ -4852,4 +4854,206 @@ model ConversationInsight {
   @@index([impact])
   @@index([createdAt])
   @@map("conversation_insights")
+}
+
+// ============================================
+// AI MODEL LIBRARY - Phase 4.4.2.1
+// ============================================
+
+model AIModel {
+  id                  String        @id @default(uuid())
+  name                String        @db.VarChar(255)
+  provider            String        @db.VarChar(100)
+  family              String        @db.VarChar(100)
+  version             String        @db.VarChar(50)
+  parameters          String?       @db.VarChar(50)
+  contextLength       Int?
+  languages           Json?
+  quantizationSupport Json?
+  minimumVram         Int?
+  recommendedVram     Int?
+  license             String?       @db.VarChar(100)
+  description         String?       @db.Text
+  capabilities        Json?
+  modelSize           BigInt?
+  status              AIModelStatus @default(AVAILABLE)
+  isActive            Boolean       @default(true)
+  metadata            Json?
+  createdBy           String?       @db.VarChar(255)
+  updatedBy           String?       @db.VarChar(255)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  // Relations
+  modelRegistry       ModelRegistry[] @relation("ModelRegistryToAIModel")
+
+  @@unique([provider, name, version])
+  @@index([provider])
+  @@index([family])
+  @@index([status])
+  @@index([isActive])
+  @@index([createdAt])
+  @@map("ai_models")
+}
+
+enum AIModelStatus {
+  AVAILABLE
+  COMING_SOON
+  DISABLED
+  EXPERIMENTAL
+  DEPRECATED
+}
+// ============================================
+// MODEL REGISTRY - PHASE 4.4.2.2
+// ============================================
+
+model ModelRegistry {
+  id            String              @id @default(uuid())
+  companyId     String              @db.VarChar(191)
+  registryName  String              @db.VarChar(255)
+  baseModelId   String?             @db.VarChar(191)
+  provider      String              @db.VarChar(100)
+  family        String              @db.VarChar(100)
+  majorVersion  Int                 @default(1)
+  minorVersion  Int                 @default(0)
+  patchVersion  Int                 @default(0)
+  versionString String              @db.VarChar(50)
+  status        ModelRegistryStatus @default(REGISTERED)
+  isActive      Boolean             @default(false)
+  description   String?             @db.Text
+  tags          Json?
+  parentModelId String?             @db.VarChar(191)
+  fineTunedFrom String?             @db.VarChar(191)
+  isLatest      Boolean             @default(true)
+  metadata      Json?
+  createdBy     String?             @db.VarChar(255)
+  updatedBy     String?             @db.VarChar(255)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  // Relations
+  company       Company             @relation("ModelRegistryToCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  baseModel     AIModel?            @relation("ModelRegistryToAIModel", fields: [baseModelId], references: [id], onDelete: SetNull)
+  parentModel   ModelRegistry?      @relation("ModelVersions", fields: [parentModelId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  childModels   ModelRegistry[]     @relation("ModelVersions")
+  history       ModelRegistryHistory[]
+  auditLogs     ModelAuditLog[]
+  modelSelections TrainingModelSelection[] @relation("ModelSelectionToRegistry")
+
+  @@unique([companyId, registryName, versionString])
+  @@index([companyId])
+  @@index([baseModelId])
+  @@index([provider])
+  @@index([family])
+  @@index([status])
+  @@index([isActive])
+  @@index([isLatest])
+  @@index([parentModelId])
+  @@index([createdAt])
+  @@map("model_registry")
+}
+
+model ModelRegistryHistory {
+  id            String              @id @default(uuid())
+  modelId       String              @db.VarChar(191)
+  companyId     String              @db.VarChar(191)
+  eventType     ModelHistoryEvent
+  previousValue Json?
+  newValue      Json?
+  changedBy     String?             @db.VarChar(255)
+  reason        String?             @db.Text
+  metadata      Json?
+  createdAt     DateTime            @default(now())
+
+  // Relations
+  model         ModelRegistry       @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  @@index([modelId])
+  @@index([companyId])
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("model_registry_history")
+}
+
+model ModelAuditLog {
+  id          String        @id @default(uuid())
+  modelId     String        @db.VarChar(191)
+  companyId   String        @db.VarChar(191)
+  action      String        @db.VarChar(100)
+  userId      String?       @db.VarChar(255)
+  userName    String?       @db.VarChar(255)
+  ipAddress   String?       @db.VarChar(50)
+  userAgent   String?       @db.VarChar(500)
+  details     Json?
+  status      String        @db.VarChar(50)
+  errorMessage String?      @db.Text
+  createdAt   DateTime      @default(now())
+
+  // Relations
+  model       ModelRegistry @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  @@index([modelId])
+  @@index([companyId])
+  @@index([action])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("model_audit_logs")
+}
+
+enum ModelRegistryStatus {
+  REGISTERED
+  READY
+  TRAINING
+  EVALUATING
+  ARCHIVED
+  FAILED
+  DEPRECATED
+}
+
+enum ModelHistoryEvent {
+  CREATED
+  UPDATED
+  ACTIVATED
+  DEACTIVATED
+  ARCHIVED
+  RESTORED
+  VERSION_CREATED
+  VERSION_UPDATED
+  STATUS_CHANGED
+  TAGS_UPDATED
+}
+
+// ============================================
+// BASE MODEL SELECTION - PHASE 4.4.2.3
+// ============================================
+
+model TrainingModelSelection {
+  id                      String              @id @default(uuid())
+  companyId               String              @db.VarChar(191)
+  trainingConfigId        String?             @db.VarChar(191)
+  datasetId               String?             @db.VarChar(191)
+  modelRegistryId         String              @db.VarChar(191)
+  selectionReason         String?             @db.Text
+  isSelected              Boolean             @default(true)
+  confidence              Float?              @default(0.0)
+  advantages              Json?
+  limitations             Json?
+  recommendationScore     Float?              @default(0.0)
+  metadata                Json?
+  selectedBy              String?             @db.VarChar(255)
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+
+  // Relations
+  modelRegistry           ModelRegistry       @relation("ModelSelectionToRegistry", fields: [modelRegistryId], references: [id], onDelete: Cascade)
+  dataset                 TrainingDataset?    @relation("ModelSelectionToDataset", fields: [datasetId], references: [id], onDelete: SetNull)
+
+  @@unique([companyId, trainingConfigId])
+  @@index([companyId])
+  @@index([trainingConfigId])
+  @@index([datasetId])
+  @@index([modelRegistryId])
+  @@index([isSelected])
+  @@index([createdAt])
+  @@map("training_model_selections")
 }

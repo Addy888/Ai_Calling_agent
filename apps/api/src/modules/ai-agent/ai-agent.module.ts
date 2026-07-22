@@ -30,6 +30,10 @@ import { KnowledgeBuilderService } from './services/knowledge-builder.service';
 import { ConversationIntelligenceGateway } from './conversation-intelligence.gateway';
 import { TrainingDatasetController } from './training-dataset.controller';
 import { TrainingDatasetService } from './services/training-dataset.service';
+import { AIModelController } from './ai-model.controller';
+import { AIModelService } from './services/ai-model.service';
+import { ModelRegistryController } from './model-registry.controller';
+import { ModelRegistryService } from './services/model-registry.service';
 import { MemoryModule } from '../memory/memory.module';
 import { KnowledgeModule } from '../knowledge/knowledge.module';
 import { PromptsModule } from '../prompts/prompts.module';
@@ -47,6 +51,8 @@ import { PromptsModule } from '../prompts/prompts.module';
     DatasetController,
     ConversationIntelligenceController,
     TrainingDatasetController,
+    AIModelController,
+    ModelRegistryController,
   ],
   providers: [
     AIAgentService,
@@ -74,6 +80,8 @@ import { PromptsModule } from '../prompts/prompts.module';
     KnowledgeBuilderService,
     ConversationIntelligenceGateway,
     TrainingDatasetService,
+    AIModelService,
+    ModelRegistryService,
   ],
   exports: [
     AIAgentService,
@@ -101,6 +109,8 @@ import { PromptsModule } from '../prompts/prompts.module';
     KnowledgeBuilderService,
     ConversationIntelligenceGateway,
     TrainingDatasetService,
+    AIModelService,
+    ModelRegistryService,
   ],
 })
 export class AIAgentModule {}
