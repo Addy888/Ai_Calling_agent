@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { PrismaService } from '../../../common/prisma/prisma.service';
 import {
   CreateFineTuningConfigDto,
   UpdateFineTuningConfigDto,
@@ -685,7 +685,7 @@ export class FineTuningConfigService {
         },
       });
     } catch (error) {
-      this.logger.error(`Failed to create audit log: ${error.message}`);
+      this.logger.error(`Failed to create audit log: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 

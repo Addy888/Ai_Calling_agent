@@ -108,8 +108,8 @@ export class TrainingEvaluationService {
       where: { id: dto.trainingSessionId },
       data: {
         metadata: {
-          evaluations: [evaluation],
-        },
+          evaluations: [evaluation as any],
+        } as any,
       },
     });
 

@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { PrismaService } from '../../../common/prisma/prisma.service';
 import {
   CreateHyperparameterConfigDto,
   UpdateHyperparameterConfigDto,
@@ -13,6 +13,7 @@ import {
   HyperparameterConfigStatus,
   ApplyPresetDto,
 } from '../dto/hyperparameter-config.dto';
+import { PrecisionType } from '../dto/fine-tuning-config.dto';
 
 @Injectable()
 export class HyperparameterConfigService {
@@ -188,7 +189,7 @@ export class HyperparameterConfigService {
         optimizerConfig: configData.optimizerConfig as any,
         scheduler: configData.scheduler || LRSchedulerType.LINEAR,
         schedulerConfig: configData.schedulerConfig as any,
-        precision: configData.precision || 'FP32',
+        precision: (configData.precision as PrecisionType) || PrecisionType.FP32,
         gradientCheckpointing: configData.gradientCheckpointing || false,
         flashAttention: configData.flashAttention || false,
         cpuOffloading: configData.cpuOffloading || false,
@@ -256,58 +257,62 @@ export class HyperparameterConfigService {
       throw new NotFoundException(`Configuration with ID ${configurationId} not found`);
     }
 
+    // Build update data object with proper typing
+    const updateData: any = {
+      updatedBy: userId,
+    };
+
+    if (dto.name) updateData.name = dto.name;
+    if (dto.description !== undefined) updateData.description = dto.description;
+    if (dto.fineTuningConfigId !== undefined) updateData.fineTuningConfigId = dto.fineTuningConfigId;
+    if (dto.trainingProfile) updateData.trainingProfile = dto.trainingProfile;
+    if (dto.epochs !== undefined) updateData.epochs = dto.epochs;
+    if (dto.batchSize !== undefined) updateData.batchSize = dto.batchSize;
+    if (dto.microBatchSize !== undefined) updateData.microBatchSize = dto.microBatchSize;
+    if (dto.gradientAccumulationSteps !== undefined) updateData.gradientAccumulationSteps = dto.gradientAccumulationSteps;
+    if (dto.learningRate !== undefined) updateData.learningRate = dto.learningRate;
+    if (dto.weightDecay !== undefined) updateData.weightDecay = dto.weightDecay;
+    if (dto.warmupRatio !== undefined) updateData.warmupRatio = dto.warmupRatio;
+    if (dto.warmupSteps !== undefined) updateData.warmupSteps = dto.warmupSteps;
+    if (dto.maxSteps !== undefined) updateData.maxSteps = dto.maxSteps;
+    if (dto.maxSequenceLength !== undefined) updateData.maxSequenceLength = dto.maxSequenceLength;
+    if (dto.randomSeed !== undefined) updateData.randomSeed = dto.randomSeed;
+    if (dto.gradientClipping !== undefined) updateData.gradientClipping = dto.gradientClipping;
+    if (dto.optimizer) updateData.optimizer = dto.optimizer;
+    if (dto.optimizerConfig !== undefined) updateData.optimizerConfig = dto.optimizerConfig;
+    if (dto.scheduler) updateData.scheduler = dto.scheduler;
+    if (dto.schedulerConfig !== undefined) updateData.schedulerConfig = dto.schedulerConfig;
+    if (dto.precision) updateData.precision = dto.precision;
+    if (dto.gradientCheckpointing !== undefined) updateData.gradientCheckpointing = dto.gradientCheckpointing;
+    if (dto.flashAttention !== undefined) updateData.flashAttention = dto.flashAttention;
+    if (dto.cpuOffloading !== undefined) updateData.cpuOffloading = dto.cpuOffloading;
+    if (dto.mixedPrecision !== undefined) updateData.mixedPrecision = dto.mixedPrecision;
+    if (dto.activationCheckpointing !== undefined) updateData.activationCheckpointing = dto.activationCheckpointing;
+    if (dto.earlyStoppingEnabled !== undefined) updateData.earlyStoppingEnabled = dto.earlyStoppingEnabled;
+    if (dto.earlyStoppingPatience !== undefined) updateData.earlyStoppingPatience = dto.earlyStoppingPatience;
+    if (dto.earlyStoppingMinDelta !== undefined) updateData.earlyStoppingMinDelta = dto.earlyStoppingMinDelta;
+    if (dto.restoreBestModel !== undefined) updateData.restoreBestModel = dto.restoreBestModel;
+    if (dto.saveEveryNSteps !== undefined) updateData.saveEveryNSteps = dto.saveEveryNSteps;
+    if (dto.maximumCheckpoints !== undefined) updateData.maximumCheckpoints = dto.maximumCheckpoints;
+    if (dto.saveBestModelOnly !== undefined) updateData.saveBestModelOnly = dto.saveBestModelOnly;
+    if (dto.saveLastCheckpoint !== undefined) updateData.saveLastCheckpoint = dto.saveLastCheckpoint;
+    if (dto.autoCleanup !== undefined) updateData.autoCleanup = dto.autoCleanup;
+    if (dto.loggingFrequency !== undefined) updateData.loggingFrequency = dto.loggingFrequency;
+    if (dto.evaluationFrequency !== undefined) updateData.evaluationFrequency = dto.evaluationFrequency;
+    if (dto.checkpointFrequency !== undefined) updateData.checkpointFrequency = dto.checkpointFrequency;
+    if (dto.tensorboardEnabled !== undefined) updateData.tensorboardEnabled = dto.tensorboardEnabled;
+    if (dto.csvLogging !== undefined) updateData.csvLogging = dto.csvLogging;
+    if (dto.jsonLogging !== undefined) updateData.jsonLogging = dto.jsonLogging;
+    if (dto.loggingConfig !== undefined) updateData.loggingConfig = dto.loggingConfig;
+    if (dto.status) updateData.status = dto.status;
+    if (dto.preset !== undefined) updateData.preset = dto.preset;
+    if (dto.version) updateData.version = dto.version;
+    if (dto.tags !== undefined) updateData.tags = dto.tags;
+    if (dto.metadata !== undefined) updateData.metadata = dto.metadata;
+
     const updated = await this.prisma.hyperparameterConfiguration.update({
       where: { id: configurationId },
-      data: {
-        ...(dto.name && { name: dto.name }),
-        ...(dto.description !== undefined && { description: dto.description }),
-        ...(dto.fineTuningConfigId !== undefined && { fineTuningConfigId: dto.fineTuningConfigId }),
-        ...(dto.trainingProfile && { trainingProfile: dto.trainingProfile }),
-        ...(dto.epochs !== undefined && { epochs: dto.epochs }),
-        ...(dto.batchSize !== undefined && { batchSize: dto.batchSize }),
-        ...(dto.microBatchSize !== undefined && { microBatchSize: dto.microBatchSize }),
-        ...(dto.gradientAccumulationSteps !== undefined && { gradientAccumulationSteps: dto.gradientAccumulationSteps }),
-        ...(dto.learningRate !== undefined && { learningRate: dto.learningRate }),
-        ...(dto.weightDecay !== undefined && { weightDecay: dto.weightDecay }),
-        ...(dto.warmupRatio !== undefined && { warmupRatio: dto.warmupRatio }),
-        ...(dto.warmupSteps !== undefined && { warmupSteps: dto.warmupSteps }),
-        ...(dto.maxSteps !== undefined && { maxSteps: dto.maxSteps }),
-        ...(dto.maxSequenceLength !== undefined && { maxSequenceLength: dto.maxSequenceLength }),
-        ...(dto.randomSeed !== undefined && { randomSeed: dto.randomSeed }),
-        ...(dto.gradientClipping !== undefined && { gradientClipping: dto.gradientClipping }),
-        ...(dto.optimizer && { optimizer: dto.optimizer }),
-        ...(dto.optimizerConfig !== undefined && { optimizerConfig: dto.optimizerConfig as any }),
-        ...(dto.scheduler && { scheduler: dto.scheduler }),
-        ...(dto.schedulerConfig !== undefined && { schedulerConfig: dto.schedulerConfig as any }),
-        ...(dto.precision && { precision: dto.precision }),
-        ...(dto.gradientCheckpointing !== undefined && { gradientCheckpointing: dto.gradientCheckpointing }),
-        ...(dto.flashAttention !== undefined && { flashAttention: dto.flashAttention }),
-        ...(dto.cpuOffloading !== undefined && { cpuOffloading: dto.cpuOffloading }),
-        ...(dto.mixedPrecision !== undefined && { mixedPrecision: dto.mixedPrecision }),
-        ...(dto.activationCheckpointing !== undefined && { activationCheckpointing: dto.activationCheckpointing }),
-        ...(dto.earlyStoppingEnabled !== undefined && { earlyStoppingEnabled: dto.earlyStoppingEnabled }),
-        ...(dto.earlyStoppingPatience !== undefined && { earlyStoppingPatience: dto.earlyStoppingPatience }),
-        ...(dto.earlyStoppingMinDelta !== undefined && { earlyStoppingMinDelta: dto.earlyStoppingMinDelta }),
-        ...(dto.restoreBestModel !== undefined && { restoreBestModel: dto.restoreBestModel }),
-        ...(dto.saveEveryNSteps !== undefined && { saveEveryNSteps: dto.saveEveryNSteps }),
-        ...(dto.maximumCheckpoints !== undefined && { maximumCheckpoints: dto.maximumCheckpoints }),
-        ...(dto.saveBestModelOnly !== undefined && { saveBestModelOnly: dto.saveBestModelOnly }),
-        ...(dto.saveLastCheckpoint !== undefined && { saveLastCheckpoint: dto.saveLastCheckpoint }),
-        ...(dto.autoCleanup !== undefined && { autoCleanup: dto.autoCleanup }),
-        ...(dto.loggingFrequency !== undefined && { loggingFrequency: dto.loggingFrequency }),
-        ...(dto.evaluationFrequency !== undefined && { evaluationFrequency: dto.evaluationFrequency }),
-        ...(dto.checkpointFrequency !== undefined && { checkpointFrequency: dto.checkpointFrequency }),
-        ...(dto.tensorboardEnabled !== undefined && { tensorboardEnabled: dto.tensorboardEnabled }),
-        ...(dto.csvLogging !== undefined && { csvLogging: dto.csvLogging }),
-        ...(dto.jsonLogging !== undefined && { jsonLogging: dto.jsonLogging }),
-        ...(dto.loggingConfig !== undefined && { loggingConfig: dto.loggingConfig as any }),
-        ...(dto.status && { status: dto.status }),
-        ...(dto.preset !== undefined && { preset: dto.preset }),
-        ...(dto.version && { version: dto.version }),
-        ...(dto.tags !== undefined && { tags: dto.tags as any }),
-        ...(dto.metadata !== undefined && { metadata: dto.metadata as any }),
-        updatedBy: userId,
-      },
+      data: updateData,
     });
 
     // Recalculate estimates
@@ -416,20 +421,22 @@ export class HyperparameterConfigService {
     }
 
     const presetData = this.getPresetConfig(presetDto.preset);
+    const updateData: any = {
+      ...presetData,
+      trainingProfile: presetDto.preset,
+      preset: presetDto.preset,
+      updatedBy: userId,
+    };
+
     const updated = await this.prisma.hyperparameterConfiguration.update({
       where: { id: configurationId },
-      data: {
-        ...presetData,
-        trainingProfile: presetDto.preset,
-        preset: presetDto.preset,
-        updatedBy: userId,
-      },
+      data: updateData,
     });
 
     const estimates = this.estimateResources(updated);
     await this.prisma.hyperparameterConfiguration.update({
       where: { id: configurationId },
-      data: { ...estimates },
+      data: estimates as any,
     });
 
     await this.createAuditLog(configurationId, companyId, 'PRESET_APPLIED', userId, configuration, updated);
@@ -677,7 +684,7 @@ export class HyperparameterConfigService {
         },
       });
     } catch (error) {
-      this.logger.error(`Failed to create audit log: ${error.message}`);
+      this.logger.error(`Failed to create audit log: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
