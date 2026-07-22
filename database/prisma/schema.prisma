@@ -55,6 +55,10 @@ model Company {
   voiceHistory      VoiceHistory[]
   datasets          DatasetRecord[] @relation("CompanyDatasets")
   modelRegistry     ModelRegistry[] @relation("ModelRegistryToCompany")
+  fineTuningConfigs FineTuningConfiguration[]
+  hyperparameterConfigs HyperparameterConfiguration[]
+  trainingStrategies TrainingStrategy[]
+  checkpointConfigurations CheckpointConfiguration[]
 
   @@index([email])
   @@index([isActive])
@@ -3456,6 +3460,10 @@ model TrainingDataset {
   coverage              DatasetCoverage[]
   trainingJobs          TrainingJob[]
   modelSelections       TrainingModelSelection[] @relation("ModelSelectionToDataset")
+  fineTuningConfigs     FineTuningConfiguration[] @relation("FineTuningConfigToDataset")
+  strategyPrimary       TrainingStrategy[]        @relation("StrategyPrimaryDataset")
+  strategySecondary     TrainingStrategy[]        @relation("StrategySecondaryDataset")
+  strategyValidation    TrainingStrategy[]        @relation("StrategyValidationDataset")
 
   @@index([companyId])
   @@index([datasetType])
@@ -4939,6 +4947,7 @@ model ModelRegistry {
   history       ModelRegistryHistory[]
   auditLogs     ModelAuditLog[]
   modelSelections TrainingModelSelection[] @relation("ModelSelectionToRegistry")
+  fineTuningConfigs FineTuningConfiguration[] @relation("FineTuningConfigToModel")
 
   @@unique([companyId, registryName, versionString])
   @@index([companyId])
@@ -5056,4 +5065,1103 @@ model TrainingModelSelection {
   @@index([isSelected])
   @@index([createdAt])
   @@map("training_model_selections")
+}
+
+// ============================================
+// MODEL COMPATIBILITY ENGINE - PHASE 4.4.2.4
+// ============================================
+
+model CompatibilityReport {
+  id                      String                    @id @default(uuid())
+  companyId               String                    @db.VarChar(191)
+  datasetId               String                    @db.VarChar(191)
+  modelRegistryId         String                    @db.VarChar(191)
+  trainingConfigId        String?                   @db.VarChar(191)
+  
+  // Compatibility Scores
+  languageScore           Float                     @default(0.0)
+  contextScore            Float                     @default(0.0)
+  datasetScore            Float                     @default(0.0)
+  hardwareScore           Float                     @default(0.0)
+  licenseScore            Float                     @default(0.0)
+  overallScore            Float                     @default(0.0)
+  
+  // Analysis Results
+  languageCompatibility   CompatibilityStatus       @default(UNKNOWN)
+  contextCompatibility    CompatibilityStatus       @default(UNKNOWN)
+  datasetCompatibility    CompatibilityStatus       @default(UNKNOWN)
+  hardwareCompatibility   CompatibilityStatus       @default(UNKNOWN)
+  licenseCompatibility    CompatibilityStatus       @default(UNKNOWN)
+  
+  // Recommendations
+  recommendation          CompatibilityRecommendation @default(NEEDS_REVIEW)
+  recommendationReason    String?                   @db.Text
+  
+  // Details
+  languageDetails         Json?
+  contextDetails          Json?
+  datasetDetails          Json?
+  hardwareDetails         Json?
+  licenseDetails          Json?
+  quantizationDetails     Json?
+  
+  // Warnings
+  warnings                Json?
+  blockers                Json?
+  suggestions             Json?
+  
+  // Status
+  status                  ReportStatus              @default(PENDING)
+  checkStartedAt          DateTime?
+  checkCompletedAt        DateTime?
+  executionTime           Int?
+  
+  // Metadata
+  metadata                Json?
+  checkedBy               String?                   @db.VarChar(255)
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+
+  @@index([companyId])
+  @@index([datasetId])
+  @@index([modelRegistryId])
+  @@index([trainingConfigId])
+  @@index([overallScore])
+  @@index([recommendation])
+  @@index([status])
+  @@index([createdAt])
+  @@map("compatibility_reports")
+}
+
+enum CompatibilityStatus {
+  COMPATIBLE
+  PARTIALLY_COMPATIBLE
+  WARNING
+  NOT_COMPATIBLE
+  UNKNOWN
+}
+
+enum CompatibilityRecommendation {
+  RECOMMENDED
+  ACCEPTABLE
+  NEEDS_IMPROVEMENT
+  NOT_RECOMMENDED
+  NEEDS_REVIEW
+}
+
+enum ReportStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+// ============================================
+// TRAINING READINESS CHECKER - Phase 4.4.2.5
+// ============================================
+
+model TrainingReadinessReport {
+  id                        String              @id @default(uuid())
+  companyId                 String
+  workspaceId               String?
+  
+  // References
+  datasetId                 String?
+  modelRegistryId           String?
+  trainingConfigurationId   String?
+  compatibilityReportId     String?
+  
+  // Overall Readiness
+  overallScore              Float               @default(0)
+  status                    ReadinessStatus     @default(NOT_READY)
+  
+  // Component Scores
+  datasetScore              Float               @default(0)
+  modelScore                Float               @default(0)
+  configurationScore        Float               @default(0)
+  compatibilityScore        Float               @default(0)
+  securityScore             Float               @default(0)
+  
+  // Dataset Checks
+  datasetExists             Boolean             @default(false)
+  datasetValidated          Boolean             @default(false)
+  datasetReady              Boolean             @default(false)
+  datasetStatus             String?             @db.VarChar(50)
+  datasetVersion            String?             @db.VarChar(50)
+  datasetValidationScore    Float?
+  datasetRecordCount        Int?
+  datasetMissingSamples     Int?
+  datasetDuplicateSamples   Int?
+  datasetInvalidSamples     Int?
+  
+  // Model Checks
+  modelSelected             Boolean             @default(false)
+  modelActive               Boolean             @default(false)
+  modelStatus               String?             @db.VarChar(50)
+  modelVersion              String?             @db.VarChar(50)
+  modelLicense              String?             @db.VarChar(100)
+  modelCompatibilityScore   Float?
+  
+  // Training Configuration Checks
+  configurationExists       Boolean             @default(false)
+  parametersConfigured      Boolean             @default(false)
+  epochsConfigured          Boolean             @default(false)
+  batchSizeConfigured       Boolean             @default(false)
+  learningRateConfigured    Boolean             @default(false)
+  trainingMethodConfigured  Boolean             @default(false)
+  
+  // Compatibility Checks
+  compatibilityReportExists Boolean             @default(false)
+  compatibilityPassed       Boolean             @default(false)
+  languageCompatible        Boolean             @default(false)
+  contextCompatible         Boolean             @default(false)
+  datasetSizeCompatible     Boolean             @default(false)
+  hardwareCompatible        Boolean             @default(false)
+  licenseCompatible         Boolean             @default(false)
+  
+  // System Requirements (Estimated)
+  estimatedMinGpuMemoryGB   Float?
+  estimatedRecGpuMemoryGB   Float?
+  estimatedRamGB            Float?
+  estimatedDiskGB           Float?
+  estimatedTrainingTimeHours Float?
+  estimatedCheckpointSizeGB Float?
+  
+  // Security Checks
+  jwtAuthEnabled            Boolean             @default(false)
+  rbacEnabled               Boolean             @default(false)
+  workspaceAccessVerified   Boolean             @default(false)
+  datasetOwnershipVerified  Boolean             @default(false)
+  modelOwnershipVerified    Boolean             @default(false)
+  
+  // Issues
+  blockers                  Json?
+  warnings                  Json?
+  recommendations           Json?
+  issues                    Json?
+  
+  // Metadata
+  checkStartedAt            DateTime?
+  checkCompletedAt          DateTime?
+  executionTimeMs           Int?
+  previousReportId          String?
+  metadata                  Json?
+  
+  // Audit
+  createdBy                 String?             @db.VarChar(255)
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+
+  @@index([companyId])
+  @@index([workspaceId])
+  @@index([datasetId])
+  @@index([modelRegistryId])
+  @@index([trainingConfigurationId])
+  @@index([compatibilityReportId])
+  @@index([status])
+  @@index([overallScore])
+  @@index([createdAt])
+  @@map("training_readiness_reports")
+}
+
+enum ReadinessStatus {
+  READY
+  ALMOST_READY
+  CONFIGURATION_REQUIRED
+  VALIDATION_FAILED
+  BLOCKED
+  NOT_READY
+}
+
+// ============================================
+// TRAINING PIPELINE PREPARATION - Phase 4.4.2.6
+// ============================================
+
+model TrainingSession {
+  id                        String              @id @default(uuid())
+  companyId                 String
+  workspaceId               String?
+  sessionName               String              @db.VarChar(255)
+  sessionIdentifier         String              @unique @db.VarChar(100)
+  
+  // References
+  datasetId                 String
+  datasetVersion            String?             @db.VarChar(50)
+  modelRegistryId           String
+  modelVersion              String?             @db.VarChar(50)
+  trainingConfigurationId   String?
+  readinessReportId         String?
+  
+  // Session Status
+  status                    TrainingSessionStatus @default(PENDING)
+  queueStatus               TrainingQueueStatus @default(PENDING)
+  
+  // Configuration
+  trainingFramework         String?             @default("PyTorch") @db.VarChar(50)
+  checkpointStrategy        String?             @default("INTERVAL") @db.VarChar(50)
+  loggingStrategy           String?             @default("VERBOSE") @db.VarChar(50)
+  
+  // Retry Policy
+  retryPolicy               Json?
+  maxRetries                Int                 @default(3)
+  retryCount                Int                 @default(0)
+  
+  // Execution
+  priority                  Int                 @default(0)
+  executionOrder            Int?
+  dependencies              Json?
+  
+  // Resource Estimation
+  estimatedGpuMemoryGB      Float?
+  estimatedRamGB            Float?
+  estimatedDiskGB           Float?
+  estimatedCpuCores         Int?
+  estimatedDurationHours    Float?
+  estimatedCheckpointSizeGB Float?
+  
+  // Checkpoint Configuration
+  checkpointInterval        Int?                @default(500)
+  maxCheckpoints            Int?                @default(3)
+  checkpointNaming          String?             @default("step") @db.VarChar(50)
+  checkpointRetentionPolicy String?             @default("KEEP_BEST") @db.VarChar(50)
+  autoCheckpointCleanup     Boolean             @default(true)
+  
+  // Provider Configuration (Future)
+  executionProvider         String?             @db.VarChar(100)
+  storageProvider           String?             @db.VarChar(100)
+  providerConfig            Json?
+  
+  // Timing
+  scheduledAt               DateTime?
+  startedAt                 DateTime?
+  completedAt               DateTime?
+  pausedAt                  DateTime?
+  resumedAt                 DateTime?
+  cancelledAt               DateTime?
+  
+  // Metadata
+  description               String?             @db.Text
+  tags                      Json?
+  metadata                  Json?
+  
+  // Audit
+  createdBy                 String?             @db.VarChar(255)
+  updatedBy                 String?             @db.VarChar(255)
+  cancelledBy               String?             @db.VarChar(255)
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+
+  pipelines                 TrainingPipeline[]
+  logs                      TrainingSessionLog[]
+
+  @@index([companyId])
+  @@index([workspaceId])
+  @@index([datasetId])
+  @@index([modelRegistryId])
+  @@index([sessionIdentifier])
+  @@index([status])
+  @@index([queueStatus])
+  @@index([priority])
+  @@index([createdAt])
+  @@map("training_sessions")
+}
+
+model TrainingPipeline {
+  id                        String              @id @default(uuid())
+  companyId                 String
+  workspaceId               String?
+  trainingSessionId         String
+  
+  // Pipeline Details
+  pipelineName              String              @db.VarChar(255)
+  pipelineIdentifier        String              @unique @db.VarChar(100)
+  pipelineStage             TrainingPipelineStage @default(PENDING)
+  pipelineStatus            TrainingPipelineStatus @default(PENDING)
+  
+  // References
+  datasetId                 String
+  modelRegistryId           String
+  trainingConfigurationId   String?
+  readinessReportId         String?
+  
+  // Validation
+  datasetValid              Boolean             @default(false)
+  modelValid                Boolean             @default(false)
+  configurationValid        Boolean             @default(false)
+  compatibilityValid        Boolean             @default(false)
+  readinessValid            Boolean             @default(false)
+  workspaceValid            Boolean             @default(false)
+  validationPassed          Boolean             @default(false)
+  
+  // Resource Estimation
+  resourceEstimation        Json?
+  
+  // Checkpoint Plan
+  checkpointPlan            Json?
+  
+  // Queue Management
+  queuePosition             Int?
+  queueStatus               TrainingQueueStatus @default(PENDING)
+  queuedAt                  DateTime?
+  
+  // Retry Configuration
+  retryPolicy               Json?
+  retryCount                Int                 @default(0)
+  maxRetries                Int                 @default(3)
+  lastRetryAt               DateTime?
+  
+  // Execution Planning
+  executionProvider         String?             @db.VarChar(100)
+  storageProvider           String?             @db.VarChar(100)
+  executionConfig           Json?
+  
+  // Failure Recovery
+  failureRecovery           Json?
+  resumeSupported           Boolean             @default(true)
+  lastCheckpointPath        String?             @db.VarChar(1000)
+  
+  // Timing
+  preparedAt                DateTime?
+  validatedAt               DateTime?
+  failedAt                  DateTime?
+  cancelledAt               DateTime?
+  
+  // Metadata
+  errorMessage              String?             @db.Text
+  warningMessages           Json?
+  metadata                  Json?
+  
+  // Audit
+  createdBy                 String?             @db.VarChar(255)
+  updatedBy                 String?             @db.VarChar(255)
+  cancelledBy               String?             @db.VarChar(255)
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+
+  session                   TrainingSession     @relation(fields: [trainingSessionId], references: [id], onDelete: Cascade)
+  stages                    PipelineStageLog[]
+
+  @@index([companyId])
+  @@index([workspaceId])
+  @@index([trainingSessionId])
+  @@index([pipelineIdentifier])
+  @@index([pipelineStage])
+  @@index([pipelineStatus])
+  @@index([queueStatus])
+  @@index([queuePosition])
+  @@index([createdAt])
+  @@map("training_pipelines")
+}
+
+model PipelineStageLog {
+  id                String              @id @default(uuid())
+  pipelineId        String
+  stage             TrainingPipelineStage
+  status            PipelineStageStatus @default(PENDING)
+  startedAt         DateTime?
+  completedAt       DateTime?
+  duration          Int?
+  message           String?             @db.Text
+  details           Json?
+  createdAt         DateTime            @default(now())
+
+  pipeline          TrainingPipeline    @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+
+  @@index([pipelineId])
+  @@index([stage])
+  @@index([status])
+  @@index([createdAt])
+  @@map("pipeline_stage_logs")
+}
+
+model TrainingSessionLog {
+  id                String              @id @default(uuid())
+  sessionId         String
+  logLevel          LogLevel            @default(INFO)
+  logType           String              @db.VarChar(100)
+  message           String              @db.Text
+  details           Json?
+  timestamp         DateTime            @default(now())
+
+  session           TrainingSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([logLevel])
+  @@index([logType])
+  @@index([timestamp])
+  @@map("training_session_logs")
+}
+
+enum TrainingSessionStatus {
+  PENDING
+  VALIDATED
+  QUEUED
+  WAITING
+  PREPARED
+  READY
+  PAUSED
+  CANCELLED
+  COMPLETED
+  FAILED
+}
+
+enum TrainingQueueStatus {
+  PENDING
+  QUEUED
+  WAITING
+  PREPARING
+  PAUSED
+  CANCELLED
+  COMPLETED
+  FAILED
+}
+
+enum TrainingPipelineStage {
+  PENDING
+  VALIDATED
+  QUEUED
+  WAITING
+  PREPARED
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum TrainingPipelineStatus {
+  PENDING
+  VALIDATING
+  VALID
+  INVALID
+  PREPARING
+  PREPARED
+  QUEUED
+  WAITING
+  PAUSED
+  CANCELLED
+  COMPLETED
+  FAILED
+}
+
+enum PipelineStageStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  SKIPPED
+}
+
+// ============================================
+// FINE-TUNING CONFIGURATION ENGINE - Phase 4.4.3.1
+// ============================================
+
+model FineTuningConfiguration {
+  id                    String                      @id @default(uuid())
+  companyId             String
+  name                  String                      @db.VarChar(255)
+  description           String?                     @db.Text
+  trainingMethod        FineTuningMethod
+  baseModelId           String?
+  datasetId             String?
+  configurationVersion  String                      @default("1.0.0") @db.VarChar(20)
+  precision             PrecisionType               @default(FP32)
+  loraConfig            Json?
+  qloraConfig           Json?
+  peftConfig            Json?
+  status                FineTuningConfigStatus      @default(DRAFT)
+  tags                  Json?
+  validationResult      Json?
+  isValidated           Boolean                     @default(false)
+  validatedAt           DateTime?
+  metadata              Json?
+  createdBy             String?                     @db.VarChar(255)
+  updatedBy             String?                     @db.VarChar(255)
+  createdAt             DateTime                    @default(now())
+  updatedAt             DateTime                    @updatedAt
+
+  company               Company                     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  baseModel             ModelRegistry?              @relation("FineTuningConfigToModel", fields: [baseModelId], references: [id], onDelete: SetNull)
+  dataset               TrainingDataset?            @relation("FineTuningConfigToDataset", fields: [datasetId], references: [id], onDelete: SetNull)
+  auditLogs             FineTuningConfigAuditLog[]
+  hyperparameterConfigs HyperparameterConfiguration[] @relation("HyperparameterToFineTuning")
+  trainingStrategies    TrainingStrategy[]          @relation("StrategyToFineTuning")
+
+  @@index([companyId])
+  @@index([trainingMethod])
+  @@index([baseModelId])
+  @@index([datasetId])
+  @@index([status])
+  @@index([isValidated])
+  @@index([createdAt])
+  @@map("fine_tuning_configurations")
+}
+
+enum FineTuningMethod {
+  SUPERVISED_FINE_TUNING
+  INSTRUCTION_FINE_TUNING
+  CONVERSATION_FINE_TUNING
+  DOMAIN_ADAPTATION
+  LORA
+  QLORA
+  ADAPTER_BASED
+  FULL_FINE_TUNING
+}
+
+enum PrecisionType {
+  FP32
+  FP16
+  BF16
+  INT8
+  INT4
+}
+
+enum FineTuningConfigStatus {
+  DRAFT
+  READY
+  VALIDATED
+  ARCHIVED
+  DEPRECATED
+}
+
+model FineTuningConfigAuditLog {
+  id                    String                      @id @default(uuid())
+  configurationId       String
+  companyId             String
+  action                FineTuningConfigAction
+  performedBy           String?                     @db.VarChar(255)
+  oldValues             Json?
+  newValues             Json?
+  changes               Json?
+  ipAddress             String?                     @db.VarChar(45)
+  userAgent             String?                     @db.Text
+  metadata              Json?
+  createdAt             DateTime                    @default(now())
+
+  configuration         FineTuningConfiguration     @relation(fields: [configurationId], references: [id], onDelete: Cascade)
+
+  @@index([configurationId])
+  @@index([companyId])
+  @@index([action])
+  @@index([performedBy])
+  @@index([createdAt])
+  @@map("fine_tuning_config_audit_logs")
+}
+
+enum FineTuningConfigAction {
+  CREATED
+  UPDATED
+  DELETED
+  VALIDATED
+  STATUS_CHANGED
+  LORA_CONFIG_UPDATED
+  QLORA_CONFIG_UPDATED
+  PEFT_CONFIG_UPDATED
+}
+
+// ============================================
+// HYPERPARAMETER CONFIGURATION ENGINE - Phase 4.4.3.2
+// ============================================
+
+model HyperparameterConfiguration {
+  id                          String                      @id @default(uuid())
+  companyId                   String
+  fineTuningConfigId          String?
+  name                        String                      @db.VarChar(255)
+  description                 String?                     @db.Text
+  trainingProfile             TrainingProfile             @default(BALANCED)
+  
+  // Training Parameters
+  epochs                      Int                         @default(3)
+  batchSize                   Int                         @default(8)
+  microBatchSize              Int?
+  gradientAccumulationSteps   Int                         @default(1)
+  learningRate                Float                       @default(0.0002)
+  weightDecay                 Float                       @default(0.01)
+  warmupRatio                 Float?
+  warmupSteps                 Int?
+  maxSteps                    Int?
+  maxSequenceLength           Int                         @default(512)
+  randomSeed                  Int                         @default(42)
+  gradientClipping            Float?                      @default(1.0)
+  
+  // Optimizer & Scheduler
+  optimizer                   OptimizerType               @default(ADAMW)
+  optimizerConfig             Json?
+  scheduler                   LRSchedulerType             @default(LINEAR)
+  schedulerConfig             Json?
+  
+  // Precision & Memory
+  precision                   PrecisionType               @default(FP32)
+  gradientCheckpointing       Boolean                     @default(false)
+  flashAttention              Boolean                     @default(false)
+  cpuOffloading               Boolean                     @default(false)
+  mixedPrecision              Boolean                     @default(false)
+  activationCheckpointing     Boolean                     @default(false)
+  
+  // Early Stopping
+  earlyStoppingEnabled        Boolean                     @default(false)
+  earlyStoppingPatience       Int?                        @default(3)
+  earlyStoppingMinDelta       Float?                      @default(0.001)
+  restoreBestModel            Boolean                     @default(true)
+  
+  // Checkpoint Strategy
+  saveEveryNSteps             Int?                        @default(500)
+  maximumCheckpoints          Int                         @default(3)
+  saveBestModelOnly           Boolean                     @default(false)
+  saveLastCheckpoint          Boolean                     @default(true)
+  autoCleanup                 Boolean                     @default(true)
+  
+  // Logging Configuration
+  loggingFrequency            Int                         @default(10)
+  evaluationFrequency         Int                         @default(100)
+  checkpointFrequency         Int                         @default(500)
+  tensorboardEnabled          Boolean                     @default(false)
+  csvLogging                  Boolean                     @default(true)
+  jsonLogging                 Boolean                     @default(true)
+  loggingConfig               Json?
+  
+  // Resource Estimation (Calculated)
+  estimatedTrainingTime       Int?
+  estimatedGpuMemory          Float?
+  estimatedRamUsage           Float?
+  estimatedCheckpointSize     Float?
+  estimatedStorageRequired    Float?
+  
+  // Status & Metadata
+  preset                      String?                     @db.VarChar(50)
+  status                      HyperparameterConfigStatus  @default(DRAFT)
+  version                     String                      @default("1.0.0") @db.VarChar(20)
+  tags                        Json?
+  validationResult            Json?
+  isValidated                 Boolean                     @default(false)
+  validatedAt                 DateTime?
+  metadata                    Json?
+  createdBy                   String?                     @db.VarChar(255)
+  updatedBy                   String?                     @db.VarChar(255)
+  createdAt                   DateTime                    @default(now())
+  updatedAt                   DateTime                    @updatedAt
+
+  company                     Company                     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  fineTuningConfig            FineTuningConfiguration?    @relation("HyperparameterToFineTuning", fields: [fineTuningConfigId], references: [id], onDelete: SetNull)
+  auditLogs                   HyperparameterConfigAuditLog[]
+  trainingStrategies          TrainingStrategy[]          @relation("StrategyToHyperparameter")
+
+  @@index([companyId])
+  @@index([fineTuningConfigId])
+  @@index([trainingProfile])
+  @@index([status])
+  @@index([preset])
+  @@index([isValidated])
+  @@index([createdAt])
+  @@map("hyperparameter_configurations")
+}
+
+enum TrainingProfile {
+  FAST_TRAINING
+  BALANCED
+  HIGH_ACCURACY
+  LOW_MEMORY
+  PRODUCTION
+  CUSTOM
+}
+
+enum OptimizerType {
+  ADAMW
+  ADAM
+  SGD
+  ADAFACTOR
+  LION
+  RMSPROP
+}
+
+enum LRSchedulerType {
+  LINEAR
+  COSINE
+  COSINE_WITH_RESTARTS
+  POLYNOMIAL
+  CONSTANT
+  CONSTANT_WITH_WARMUP
+  REDUCE_ON_PLATEAU
+}
+
+enum HyperparameterConfigStatus {
+  DRAFT
+  READY
+  VALIDATED
+  ARCHIVED
+  DEPRECATED
+}
+
+model HyperparameterConfigAuditLog {
+  id                    String                      @id @default(uuid())
+  configurationId       String
+  companyId             String
+  action                HyperparameterConfigAction
+  performedBy           String?                     @db.VarChar(255)
+  oldValues             Json?
+  newValues             Json?
+  changes               Json?
+  ipAddress             String?                     @db.VarChar(45)
+  userAgent             String?                     @db.Text
+  metadata              Json?
+  createdAt             DateTime                    @default(now())
+
+  configuration         HyperparameterConfiguration @relation(fields: [configurationId], references: [id], onDelete: Cascade)
+
+  @@index([configurationId])
+  @@index([companyId])
+  @@index([action])
+  @@index([performedBy])
+  @@index([createdAt])
+  @@map("hyperparameter_config_audit_logs")
+}
+
+enum HyperparameterConfigAction {
+  CREATED
+  UPDATED
+  DELETED
+  VALIDATED
+  PRESET_APPLIED
+  STATUS_CHANGED
+  ESTIMATION_CALCULATED
+}
+
+// ============================================
+// TRAINING STRATEGY ENGINE - Phase 4.4.3.3
+// ============================================
+
+model TrainingStrategy {
+  id                          String                      @id @default(uuid())
+  companyId                   String
+  fineTuningConfigId          String?
+  hyperparameterConfigId      String?
+  name                        String                      @db.VarChar(255)
+  description                 String?                     @db.Text
+  
+  // Strategy Configuration
+  strategyType                TrainingStrategyType        @default(SUPERVISED_FINE_TUNING)
+  pipelineType                PipelineType                @default(SINGLE_STAGE)
+  
+  // Objectives
+  primaryObjective            String                      @db.VarChar(255)
+  secondaryObjective          String?                     @db.VarChar(255)
+  conversationObjective       String?                     @db.VarChar(255)
+  instructionObjective        String?                     @db.VarChar(255)
+  responseQualityObjective    String?                     @db.VarChar(255)
+  knowledgeRetentionObjective String?                     @db.VarChar(255)
+  
+  // Dataset Strategy
+  primaryDatasetId            String?
+  secondaryDatasetId          String?
+  datasetPriority             Json?
+  datasetWeight               Json?
+  datasetMixingRatio          Float?
+  samplingStrategy            SamplingStrategy            @default(RANDOM)
+  shuffleDataset              Boolean                     @default(true)
+  curriculumOrder             Json?
+  
+  // Loss Function
+  lossFunction                LossFunction                @default(CROSS_ENTROPY)
+  lossFunctionConfig          Json?
+  labelSmoothing              Float?
+  weightedLoss                Boolean                     @default(false)
+  customLossConfig            Json?
+  
+  // Training Flow
+  stageOrder                  Json?
+  datasetAssignment           Json?
+  modelAssignment             Json?
+  evaluationBetweenStages     Boolean                     @default(true)
+  checkpointBetweenStages     Boolean                     @default(true)
+  resumeSupport               Boolean                     @default(true)
+  
+  // Evaluation Strategy
+  evaluationInterval          Int                         @default(100)
+  validationDatasetId         String?
+  evaluationFrequency         Int                         @default(100)
+  automaticBestModelSelection Boolean                     @default(true)
+  earlyEvaluation             Boolean                     @default(false)
+  evaluationMetrics           Json?
+  
+  // Failure Strategy
+  retryCount                  Int                         @default(3)
+  resumeFromCheckpoint        Boolean                     @default(true)
+  rollbackStrategy            RollbackStrategy            @default(LAST_CHECKPOINT)
+  abortPolicy                 AbortPolicy                 @default(MANUAL)
+  failureNotificationEnabled  Boolean                     @default(true)
+  failureNotificationConfig   Json?
+  
+  // Status & Metadata
+  status                      TrainingStrategyStatus      @default(DRAFT)
+  version                     String                      @default("1.0.0") @db.VarChar(20)
+  tags                        Json?
+  validationResult            Json?
+  isValidated                 Boolean                     @default(false)
+  validatedAt                 DateTime?
+  metadata                    Json?
+  createdBy                   String?                     @db.VarChar(255)
+  updatedBy                   String?                     @db.VarChar(255)
+  createdAt                   DateTime                    @default(now())
+  updatedAt                   DateTime                    @updatedAt
+
+  company                     Company                     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  fineTuningConfig            FineTuningConfiguration?    @relation("StrategyToFineTuning", fields: [fineTuningConfigId], references: [id], onDelete: SetNull)
+  hyperparameterConfig        HyperparameterConfiguration? @relation("StrategyToHyperparameter", fields: [hyperparameterConfigId], references: [id], onDelete: SetNull)
+  primaryDataset              TrainingDataset?            @relation("StrategyPrimaryDataset", fields: [primaryDatasetId], references: [id], onDelete: SetNull)
+  secondaryDataset            TrainingDataset?            @relation("StrategySecondaryDataset", fields: [secondaryDatasetId], references: [id], onDelete: SetNull)
+  validationDataset           TrainingDataset?            @relation("StrategyValidationDataset", fields: [validationDatasetId], references: [id], onDelete: SetNull)
+  auditLogs                   TrainingStrategyAuditLog[]
+
+  @@index([companyId])
+  @@index([fineTuningConfigId])
+  @@index([hyperparameterConfigId])
+  @@index([strategyType])
+  @@index([pipelineType])
+  @@index([status])
+  @@index([isValidated])
+  @@index([createdAt])
+  @@map("training_strategies")
+}
+
+enum TrainingStrategyType {
+  SUPERVISED_FINE_TUNING
+  INSTRUCTION_TUNING
+  CONVERSATION_FINE_TUNING
+  DOMAIN_ADAPTATION
+  MULTI_TASK_LEARNING
+  CONTINUAL_LEARNING
+  CURRICULUM_LEARNING
+  MULTI_STAGE_FINE_TUNING
+  ADAPTER_BASED_TRAINING
+  CUSTOM_STRATEGY
+}
+
+enum PipelineType {
+  SINGLE_STAGE
+  MULTI_STAGE
+  SEQUENTIAL_TRAINING
+  PARALLEL_DATASET_PREPARATION
+  HYBRID_STRATEGY
+}
+
+enum SamplingStrategy {
+  RANDOM
+  SEQUENTIAL
+  WEIGHTED
+  BALANCED
+  CURRICULUM
+  ADAPTIVE
+}
+
+enum LossFunction {
+  CROSS_ENTROPY
+  LABEL_SMOOTHING
+  WEIGHTED_LOSS
+  CUSTOM_LOSS
+}
+
+enum RollbackStrategy {
+  LAST_CHECKPOINT
+  BEST_CHECKPOINT
+  SPECIFIC_CHECKPOINT
+  NO_ROLLBACK
+}
+
+enum AbortPolicy {
+  MANUAL
+  AUTOMATIC_ON_ERROR
+  AUTOMATIC_ON_METRIC_THRESHOLD
+  NEVER
+}
+
+enum TrainingStrategyStatus {
+  DRAFT
+  READY
+  VALIDATED
+  ARCHIVED
+  DEPRECATED
+}
+
+model TrainingStrategyAuditLog {
+  id                    String                      @id @default(uuid())
+  strategyId            String
+  companyId             String
+  action                TrainingStrategyAction
+  performedBy           String?                     @db.VarChar(255)
+  oldValues             Json?
+  newValues             Json?
+  changes               Json?
+  ipAddress             String?                     @db.VarChar(45)
+  userAgent             String?                     @db.Text
+  metadata              Json?
+  createdAt             DateTime                    @default(now())
+
+  strategy              TrainingStrategy            @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+
+  @@index([strategyId])
+  @@index([companyId])
+  @@index([action])
+  @@index([performedBy])
+  @@index([createdAt])
+  @@map("training_strategy_audit_logs")
+}
+
+enum TrainingStrategyAction {
+  CREATED
+  UPDATED
+  DELETED
+  VALIDATED
+  STATUS_CHANGED
+  DATASET_ASSIGNED
+  OBJECTIVE_UPDATED
+  EVALUATION_CONFIGURED
+}
+
+// ============================================
+// CHECKPOINT & RECOVERY MANAGER - Phase 4.4.3.4
+// ============================================
+
+model CheckpointConfiguration {
+  id                      String                      @id @default(uuid())
+  companyId               String
+  trainingPipelineId      String?
+  trainingStrategyId      String?
+  name                    String                      @db.VarChar(255)
+  description             String?                     @db.Text
+  
+  // Save Strategy
+  saveStrategy            SaveStrategy                @default(SAVE_EVERY_N_STEPS)
+  saveIntervalSteps       Int?                        @default(500)
+  saveIntervalEpochs      Int?                        @default(1)
+  
+  // Checkpoint Policy
+  maxCheckpoints          Int                         @default(3)
+  autoCleanup             Boolean                     @default(true)
+  overwritePolicy         OverwritePolicy             @default(OVERWRITE_OLDEST)
+  retentionDays           Int                         @default(30)
+  storageLimitGB          Float?
+  enableArchiving         Boolean                     @default(false)
+  archivePolicy           Json?
+  
+  // Recovery Strategy
+  recoveryStrategy        RecoveryStrategy            @default(RESUME_LATEST)
+  
+  // Failure Recovery
+  maxRetryCount           Int                         @default(3)
+  retryDelaySeconds       Int                         @default(60)
+  failureThreshold        Int                         @default(5)
+  resumeAfterCrash        Boolean                     @default(true)
+  autoRecovery            Boolean                     @default(true)
+  manualRecovery          Boolean                     @default(true)
+  
+  // Version Management
+  enableVersioning        Boolean                     @default(true)
+  trackParentCheckpoint   Boolean                     @default(true)
+  enableVersionHistory    Boolean                     @default(true)
+  enableRollback          Boolean                     @default(true)
+  
+  // Storage Configuration
+  storageType             StorageType                 @default(LOCAL_STORAGE)
+  storagePath             String?                     @db.VarChar(1000)
+  storageConfig           Json?
+  enableCompression       Boolean                     @default(false)
+  enableEncryption        Boolean                     @default(false)
+  
+  // Status & Metadata
+  status                  CheckpointConfigStatus      @default(DRAFT)
+  version                 String                      @default("1.0.0") @db.VarChar(20)
+  tags                    Json?
+  validationResult        Json?
+  isValidated             Boolean                     @default(false)
+  validatedAt             DateTime?
+  metadata                Json?
+  createdBy               String?                     @db.VarChar(255)
+  updatedBy               String?                     @db.VarChar(255)
+  createdAt               DateTime                    @default(now())
+  updatedAt               DateTime                    @updatedAt
+
+  company                 Company                     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  auditLogs               CheckpointConfigAuditLog[]
+
+  @@index([companyId])
+  @@index([trainingPipelineId])
+  @@index([trainingStrategyId])
+  @@index([saveStrategy])
+  @@index([recoveryStrategy])
+  @@index([status])
+  @@index([isValidated])
+  @@index([createdAt])
+  @@map("checkpoint_configurations")
+}
+
+enum SaveStrategy {
+  SAVE_EVERY_N_STEPS
+  SAVE_EVERY_EPOCH
+  SAVE_BEST_MODEL
+  SAVE_LAST_MODEL
+  MANUAL_ONLY
+  DISABLED
+}
+
+enum OverwritePolicy {
+  KEEP_ALL
+  OVERWRITE_OLDEST
+  OVERWRITE_WORST
+  MANUAL_SELECTION
+}
+
+enum RecoveryStrategy {
+  RESUME_LATEST
+  RESUME_BEST
+  RESUME_MANUAL
+  ROLLBACK_PREVIOUS
+  RESTART_TRAINING
+}
+
+enum StorageType {
+  LOCAL_STORAGE
+  NETWORK_STORAGE
+  CLOUD_STORAGE
+  OBJECT_STORAGE
+}
+
+enum CheckpointConfigStatus {
+  DRAFT
+  READY
+  VALIDATED
+  ARCHIVED
+}
+
+model CheckpointConfigAuditLog {
+  id                    String                      @id @default(uuid())
+  configurationId       String
+  companyId             String
+  action                CheckpointConfigAction
+  performedBy           String?                     @db.VarChar(255)
+  oldValues             Json?
+  newValues             Json?
+  changes               Json?
+  ipAddress             String?                     @db.VarChar(45)
+  userAgent             String?                     @db.Text
+  metadata              Json?
+  createdAt             DateTime                    @default(now())
+
+  configuration         CheckpointConfiguration     @relation(fields: [configurationId], references: [id], onDelete: Cascade)
+
+  @@index([configurationId])
+  @@index([companyId])
+  @@index([action])
+  @@index([performedBy])
+  @@index([createdAt])
+  @@map("checkpoint_config_audit_logs")
+}
+
+enum CheckpointConfigAction {
+  CREATED
+  UPDATED
+  DELETED
+  VALIDATED
+  STATUS_CHANGED
+  RECOVERY_POLICY_UPDATED
+  STORAGE_UPDATED
+  RETENTION_UPDATED
 }
