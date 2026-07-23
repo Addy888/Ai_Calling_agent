@@ -68,19 +68,34 @@ class TrainingPipeline:
             await job_manager.update_status(job.job_id, TrainingStatus.TRAINING)
             event_manager.emit_training_started(job.job_id)
 
-            # Step 9: Delegate to trainer (PLACEHOLDER - will be implemented in next phase)
-            # For now, just mark as completed after a delay
+            # Step 9: Delegate to trainer (Phase 4.4.4.5.2 integration)
             training_logger.info(
-                f"Pipeline prepared - delegating to trainer (to be implemented)",
+                f"Pipeline prepared - delegating to HF trainer",
                 job_id=job.job_id,
             )
 
-            # This is where the actual trainer will be called
-            # result = await trainer.execute(context)
+            # Import trainer components
+            from app.trainer.trainer_factory import trainer_factory
+            from app.trainer.trainer_runtime import trainer_runtime_manager
 
-            # For now, simulate completion
+            # Create trainer
+            trainer = trainer_factory.create_trainer(context)
+
+            # Create runtime
+            runtime = trainer_runtime_manager.create_runtime(job.job_id)
+
+            # Initialize runtime
+            await runtime.initialize(trainer, context)
+
+            # Execute training
+            result = await runtime.start_training()
+
+            # Update job status
             await job_manager.update_status(job.job_id, TrainingStatus.COMPLETED)
             event_manager.emit_training_completed(job.job_id)
+
+            # Shutdown runtime
+            await trainer_runtime_manager.shutdown_runtime(job.job_id)
 
             # Step 10: Cleanup
             event_manager.emit_cleanup_started(job.job_id)
