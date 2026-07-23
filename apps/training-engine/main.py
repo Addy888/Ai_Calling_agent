@@ -9,6 +9,8 @@ from app.api import set_job_runner
 from app.config import settings
 from app.core import get_training_core
 from app.dataset.api import router as dataset_router
+from app.model.api import router as model_router
+from app.training_executor.api import router as training_executor_router
 from app.health import router as health_router
 from app.logger import training_logger
 from app.middleware import (
@@ -46,6 +48,8 @@ if not settings.DEBUG:
 app.include_router(health_router, tags=["Health"])
 app.include_router(api_router, prefix=settings.API_PREFIX, tags=["Training"])
 app.include_router(dataset_router, prefix=settings.API_PREFIX, tags=["Dataset"])
+app.include_router(model_router, prefix=settings.API_PREFIX, tags=["Model"])
+app.include_router(training_executor_router, prefix=settings.API_PREFIX, tags=["Training Executor"])
 
 
 @app.on_event("startup")
