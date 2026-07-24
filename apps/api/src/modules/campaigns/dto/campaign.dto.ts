@@ -54,23 +54,7 @@ export class CreateCampaignDto {
   @IsOptional()
   status?: CampaignStatus;
 
-  @ApiPropertyOptional({ example: '2024-07-15T09:00:00Z' })
-  @IsDateString()
-  @IsOptional()
-  @Transform(({ value }) => value ? new Date(value) : null)
-  startDate?: string;
 
-  @ApiPropertyOptional({ example: '2024-07-30T17:00:00Z' })
-  @IsDateString()
-  @IsOptional()
-  @Transform(({ value }) => value ? new Date(value) : null)
-  endDate?: string;
-
-  @ApiPropertyOptional({ example: 'America/New_York' })
-  @IsString()
-  @IsOptional()
-  @MaxLength(100)
-  timezone?: string;
 
   @ApiPropertyOptional({ example: { callsPerDay: 100, retryAttempts: 3 } })
   @IsObject()

@@ -20,9 +20,6 @@ const campaignSchema = z.object({
   status: z.nativeEnum(CampaignStatus).optional(),
   scriptId: z.string().optional(),
   promptId: z.string().optional(),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
-  timezone: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -47,9 +44,6 @@ export function EditCampaignForm({ campaign, onSuccess }: EditCampaignFormProps)
       status: campaign.status,
       scriptId: campaign.scriptId || '',
       promptId: campaign.promptId || '',
-      startDate: campaign.startDate ? new Date(campaign.startDate).toISOString().slice(0, 16) : '',
-      endDate: campaign.endDate ? new Date(campaign.endDate).toISOString().slice(0, 16) : '',
-      timezone: campaign.timezone || 'America/New_York',
       notes: campaign.notes || '',
     },
   });
@@ -82,8 +76,6 @@ export function EditCampaignForm({ campaign, onSuccess }: EditCampaignFormProps)
         ...data,
         scriptId: data.scriptId || undefined,
         promptId: data.promptId || undefined,
-        startDate: data.startDate || undefined,
-        endDate: data.endDate || undefined,
       };
       
       await campaignApi.update(campaign.id, updateData);
@@ -190,45 +182,6 @@ export function EditCampaignForm({ campaign, onSuccess }: EditCampaignFormProps)
             </SelectContent>
           </Select>
         </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="startDate">Start Date</Label>
-          <Input
-            id="startDate"
-            type="datetime-local"
-            {...form.register('startDate')}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="endDate">End Date</Label>
-          <Input
-            id="endDate"
-            type="datetime-local"
-            {...form.register('endDate')}
-          />
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="timezone">Timezone</Label>
-        <Select
-          value={form.watch('timezone') || 'America/New_York'}
-          onValueChange={(value) => form.setValue('timezone', value)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select timezone" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="America/New_York">Eastern Time</SelectItem>
-            <SelectItem value="America/Chicago">Central Time</SelectItem>
-            <SelectItem value="America/Denver">Mountain Time</SelectItem>
-            <SelectItem value="America/Los_Angeles">Pacific Time</SelectItem>
-            <SelectItem value="UTC">UTC</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
       <div className="space-y-2">

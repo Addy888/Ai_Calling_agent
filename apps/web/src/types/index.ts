@@ -331,9 +331,6 @@ export interface CreateCampaignDto {
   promptId?: string
   voiceId?: string
   status?: CampaignStatus
-  startDate?: string
-  endDate?: string
-  timezone?: string
   settings?: any
   tags?: string[]
   notes?: string

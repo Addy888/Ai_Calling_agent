@@ -30,7 +30,13 @@ export class CampaignService {
 
     const campaign = await this.prisma.campaign.create({
       data: {
-        ...data,
+        name: data.name,
+        description: data.description,
+        status: data.status,
+        scriptId: data.scriptId,
+        promptId: data.promptId,
+        voiceId: data.voiceId,
+        settings: data.settings,
         companyId,
         userId,
         createdBy: userId,
@@ -202,7 +208,13 @@ export class CampaignService {
     const updatedCampaign = await this.prisma.campaign.update({
       where: { id },
       data: {
-        ...data,
+        name: data.name,
+        description: data.description,
+        status: data.status,
+        scriptId: data.scriptId,
+        promptId: data.promptId,
+        voiceId: data.voiceId,
+        settings: data.settings,
         updatedBy: userId,
       },
       include: {
