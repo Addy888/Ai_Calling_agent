@@ -1,5 +1,6 @@
 import { IsString, IsOptional, IsEnum, IsBoolean, IsDateString, IsObject } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { PaginationDto } from '@/common/dto/pagination.dto';
 
 export enum ReportType {
   CAMPAIGN_PERFORMANCE = 'CAMPAIGN_PERFORMANCE',
@@ -105,7 +106,7 @@ export class UpdateReportDto {
   isActive?: boolean;
 }
 
-export class ReportFilterDto {
+export class ReportFilterDto extends PaginationDto {
   @ApiPropertyOptional({ description: 'Search query' })
   @IsOptional()
   @IsString()

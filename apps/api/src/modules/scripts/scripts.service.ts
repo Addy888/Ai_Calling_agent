@@ -35,24 +35,30 @@ export class ScriptService {
       deletedAt: null,
     };
 
-    if (filters.search) {
+    // Merge flat and nested filters parameters
+    const search = filters.search || filters.filters?.search;
+    const language = filters.language || filters.filters?.language;
+    const isActive = filters.isActive !== undefined ? filters.isActive : filters.filters?.isActive;
+    const status = filters.status || filters.filters?.status;
+
+    if (search) {
       where.OR = [
-        { name: { contains: filters.search } },
-        { description: { contains: filters.search } },
-        { content: { contains: filters.search } },
+        { name: { contains: search } },
+        { description: { contains: search } },
+        { content: { contains: search } },
       ];
     }
 
-    if (filters.language) {
-      where.language = filters.language;
+    if (language) {
+      where.language = language;
     }
 
-    if (filters.isActive !== undefined) {
-      where.isActive = filters.isActive;
+    if (isActive !== undefined) {
+      where.isActive = isActive;
     }
 
-    if (filters.status) {
-      where.status = filters.status;
+    if (status) {
+      where.status = status;
     }
 
     const [scripts, total] = await Promise.all([

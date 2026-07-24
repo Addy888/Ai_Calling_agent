@@ -2,6 +2,9 @@ import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 
+/** Roles that have full system access and bypass all role restrictions. */
+const SUPER_ROLES = ['super-admin'];
+
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
@@ -22,6 +25,16 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('User roles not found');
     }
 
+    // Super-admin has full system access — passes all role-restricted endpoints.
+    const isSuperAdmin = user.roles.some((userRole: any) =>
+      SUPER_ROLES.includes(userRole.slug)
+    );
+
+    if (isSuperAdmin) {
+      return true;
+    }
+
+    // For all other roles, enforce exact slug match.
     const hasRole = requiredRoles.some((role) =>
       user.roles?.some((userRole: any) => userRole.slug === role)
     );

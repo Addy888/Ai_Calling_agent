@@ -12,6 +12,7 @@ import {
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
+import { PaginationDto } from '@/common/dto/pagination.dto';
 
 export class CreateContactDto {
   @ApiProperty({ example: 'John' })
@@ -116,7 +117,7 @@ export class UpdateContactDto extends PartialType(CreateContactDto) {
   lastCalledAt?: string;
 }
 
-export class ContactFilterDto {
+export class ContactFilterDto extends PaginationDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()

@@ -32,10 +32,9 @@ export class AuditLogsController {
   @Permissions('audit-logs.read')
   async findAll(
     @CurrentUser() user: any,
-    @Query() paginationDto: PaginationDto,
-    @Query() filters: AuditLogFilterDto,
+    @Query() query: AuditLogFilterDto,
   ) {
-    return this.auditLogsService.findAll(user.companyId, paginationDto, filters);
+    return this.auditLogsService.findAll(user.companyId, query, query);
   }
 
   @Get('statistics')

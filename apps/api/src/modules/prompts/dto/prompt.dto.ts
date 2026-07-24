@@ -1,6 +1,15 @@
-import { IsString, IsOptional, IsUUID, IsEnum, MaxLength, IsNumber } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  MaxLength,
+  IsNumber,
+  IsDateString,
+  ValidateNested,
+} from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
+import { PaginationDto } from '@/common/dto/pagination.dto';
 
 export enum PromptStatus {
   DRAFT = 'DRAFT',
@@ -49,7 +58,8 @@ export class CreatePromptDto {
 
 export class UpdatePromptDto extends PartialType(CreatePromptDto) {}
 
-export class PromptFilterDto {
+/** Nested filters object sent as filters[key]=value */
+export class PromptFilterDetailsDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
@@ -58,16 +68,54 @@ export class PromptFilterDto {
   @ApiPropertyOptional({ enum: PromptStatus, isArray: true })
   @IsOptional()
   @IsEnum(PromptStatus, { each: true })
-  @Transform(({ value }) => Array.isArray(value) ? value : [value])
+  @Transform(({ value }) => {
+    if (typeof value === 'string') return [value as PromptStatus];
+    return value;
+  })
   status?: PromptStatus[];
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsString()
+  @IsDateString()
   createdAfter?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsString()
+  @IsDateString()
   createdBefore?: string;
 }
+
+/**
+ * Combined query DTO for GET /prompts.
+ * Extends PaginationDto so that page, limit, search, sortBy, sortOrder
+ * are all declared on this single DTO — used with a single @Query() decorator.
+ */
+export class PromptQueryDto extends PaginationDto {
+  @ApiPropertyOptional({ enum: PromptStatus, isArray: true })
+  @IsOptional()
+  @IsEnum(PromptStatus, { each: true })
+  @Transform(({ value }) => {
+    if (typeof value === 'string') return [value as PromptStatus];
+    return value;
+  })
+  status?: PromptStatus[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  createdAfter?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  createdBefore?: string;
+
+  @ApiPropertyOptional({ type: PromptFilterDetailsDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => PromptFilterDetailsDto)
+  filters?: PromptFilterDetailsDto;
+}
+
+/** @deprecated — use PromptQueryDto. Kept for backward compatibility with service layer. */
+export class PromptFilterDto extends PromptQueryDto {}

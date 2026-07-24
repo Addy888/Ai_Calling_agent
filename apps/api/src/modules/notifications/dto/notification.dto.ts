@@ -1,6 +1,7 @@
 import { IsString, IsOptional, IsEnum, IsBoolean, IsDateString, IsArray } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { PaginationDto } from '@/common/dto/pagination.dto';
 
 export enum NotificationType {
   SUCCESS = 'SUCCESS',
@@ -85,7 +86,7 @@ export class UpdateNotificationDto {
   expiresAt?: string;
 }
 
-export class NotificationFilterDto {
+export class NotificationFilterDto extends PaginationDto {
   @ApiPropertyOptional({ description: 'Notification types', isArray: true, enum: NotificationType })
   @IsOptional()
   @IsArray()

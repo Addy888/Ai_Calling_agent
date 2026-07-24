@@ -37,10 +37,9 @@ export class ReportsController {
   @Permissions('reports.read')
   async findAll(
     @CurrentUser() user: any,
-    @Query() paginationDto: PaginationDto,
-    @Query() filters: ReportFilterDto,
+    @Query() query: ReportFilterDto,
   ) {
-    return this.reportsService.findAll(user.companyId, paginationDto, filters);
+    return this.reportsService.findAll(user.companyId, query, query);
   }
 
   @Get(':id')

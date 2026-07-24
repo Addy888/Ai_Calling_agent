@@ -1,6 +1,14 @@
-import { IsString, IsOptional, IsBoolean, IsUUID, MaxLength, IsEnum } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsBoolean,
+  MaxLength,
+  IsEnum,
+  ValidateNested,
+} from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
+import { PaginationDto } from '@/common/dto/pagination.dto';
 
 export enum ScriptLanguage {
   ENGLISH = 'en',
@@ -47,7 +55,8 @@ export class CreateScriptDto {
 
 export class UpdateScriptDto extends PartialType(CreateScriptDto) {}
 
-export class ScriptFilterDto {
+/** Nested filters object sent as filters[key]=value */
+export class ScriptFilterDetailsDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
@@ -61,7 +70,7 @@ export class ScriptFilterDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
-  @Transform(({ value }) => value === 'true')
+  @Transform(({ value }) => value === 'true' || value === true)
   isActive?: boolean;
 
   @ApiPropertyOptional()
@@ -69,3 +78,35 @@ export class ScriptFilterDto {
   @IsString()
   status?: string;
 }
+
+/**
+ * Combined query DTO for GET /scripts.
+ * Extends PaginationDto so that page, limit, search, sortBy, sortOrder
+ * are all declared on this single DTO — used with a single @Query() decorator.
+ */
+export class ScriptQueryDto extends PaginationDto {
+  @ApiPropertyOptional({ enum: ScriptLanguage })
+  @IsOptional()
+  @IsEnum(ScriptLanguage)
+  language?: ScriptLanguage;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => value === 'true' || value === true)
+  isActive?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  status?: string;
+
+  @ApiPropertyOptional({ type: ScriptFilterDetailsDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ScriptFilterDetailsDto)
+  filters?: ScriptFilterDetailsDto;
+}
+
+/** @deprecated — use ScriptQueryDto. Kept for backward compatibility with service layer. */
+export class ScriptFilterDto extends ScriptQueryDto {}

@@ -51,38 +51,48 @@ export class ActivityLogsService {
       companyId,
     };
 
-    if (filters?.userId) {
-      where.userId = filters.userId;
+    const userId = filters?.userId || filters?.filters?.userId;
+    const module = filters?.module || filters?.filters?.module;
+    const action = filters?.action || filters?.filters?.action;
+    const entityType = filters?.entityType || filters?.filters?.entityType;
+    const entityId = filters?.entityId || filters?.filters?.entityId;
+    const ipAddress = filters?.ipAddress || filters?.filters?.ipAddress;
+    const createdAfter = filters?.createdAfter || filters?.filters?.createdAfter;
+    const createdBefore = filters?.createdBefore || filters?.filters?.createdBefore;
+    const querySearch = filters?.search || filters?.filters?.search;
+
+    if (userId) {
+      where.userId = userId;
     }
 
-    if (filters?.module) {
-      where.module = filters.module;
+    if (module) {
+      where.module = module;
     }
 
-    if (filters?.action) {
-      where.action = { contains: filters.action };
+    if (action) {
+      where.action = { contains: action };
     }
 
-    if (filters?.entityType) {
-      where.entityType = filters.entityType;
+    if (entityType) {
+      where.entityType = entityType;
     }
 
-    if (filters?.entityId) {
-      where.entityId = filters.entityId;
+    if (entityId) {
+      where.entityId = entityId;
     }
 
-    if (filters?.ipAddress) {
-      where.ipAddress = filters.ipAddress;
+    if (ipAddress) {
+      where.ipAddress = ipAddress;
     }
 
-    if (filters?.createdAfter || filters?.createdBefore) {
+    if (createdAfter || createdBefore) {
       where.createdAt = {};
-      if (filters.createdAfter) where.createdAt.gte = new Date(filters.createdAfter);
-      if (filters.createdBefore) where.createdAt.lte = new Date(filters.createdBefore);
+      if (createdAfter) where.createdAt.gte = new Date(createdAfter);
+      if (createdBefore) where.createdAt.lte = new Date(createdBefore);
     }
 
-    if (search || filters?.search) {
-      const searchTerm = search || filters?.search;
+    if (search || querySearch) {
+      const searchTerm = search || querySearch;
       where.OR = [
         { action: { contains: searchTerm } },
         { module: { contains: searchTerm } },

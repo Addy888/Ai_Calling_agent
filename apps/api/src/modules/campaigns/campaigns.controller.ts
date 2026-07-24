@@ -19,7 +19,7 @@ import {
 import { CampaignService } from './campaigns.service';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
-import { PaginationDto } from '@/common/dto/pagination.dto';
+
 import {
   CreateCampaignDto,
   UpdateCampaignDto,
@@ -52,10 +52,9 @@ export class CampaignController {
   @ApiOperation({ summary: 'Get all campaigns with pagination and filters' })
   findAll(
     @CurrentUser('companyId') companyId: string,
-    @Query() paginationDto: PaginationDto,
-    @Query() filters: CampaignFilterDto,
+    @Query() query: CampaignFilterDto,
   ) {
-    return this.campaignService.findAll(companyId, paginationDto, filters);
+    return this.campaignService.findAll(companyId, query, query);
   }
 
   @Get(':id')

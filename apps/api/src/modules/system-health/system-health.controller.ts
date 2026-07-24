@@ -3,7 +3,6 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagg
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
 import { Permissions } from '@/common/decorators/permissions.decorator';
-import { PaginationDto } from '@/common/dto/pagination.dto';
 import { SystemHealthService } from './system-health.service';
 import { CreateSystemHealthDto, SystemHealthFilterDto, SystemComponent } from './dto/system-health.dto';
 
@@ -27,10 +26,9 @@ export class SystemHealthController {
   @ApiResponse({ status: 200, description: 'System health records retrieved successfully' })
   @Permissions('system-health.read')
   async findAll(
-    @Query() paginationDto: PaginationDto,
-    @Query() filters: SystemHealthFilterDto,
+    @Query() query: SystemHealthFilterDto,
   ) {
-    return this.systemHealthService.findAll(paginationDto, filters);
+    return this.systemHealthService.findAll(query, query);
   }
 
   @Get('latest')

@@ -35,22 +35,27 @@ export class PromptService {
       deletedAt: null,
     };
 
-    if (filters.search) {
+    const search = filters.search || filters.filters?.search;
+    const status = filters.status || filters.filters?.status;
+    const createdAfter = filters.createdAfter || filters.filters?.createdAfter;
+    const createdBefore = filters.createdBefore || filters.filters?.createdBefore;
+
+    if (search) {
       where.OR = [
-        { name: { contains: filters.search } },
-        { description: { contains: filters.search } },
-        { content: { contains: filters.search } },
+        { name: { contains: search } },
+        { description: { contains: search } },
+        { content: { contains: search } },
       ];
     }
 
-    if (filters.status && filters.status.length > 0) {
-      where.status = { in: filters.status };
+    if (status && status.length > 0) {
+      where.status = { in: status };
     }
 
-    if (filters.createdAfter || filters.createdBefore) {
+    if (createdAfter || createdBefore) {
       where.createdAt = {};
-      if (filters.createdAfter) where.createdAt.gte = new Date(filters.createdAfter);
-      if (filters.createdBefore) where.createdAt.lte = new Date(filters.createdBefore);
+      if (createdAfter) where.createdAt.gte = new Date(createdAfter);
+      if (createdBefore) where.createdAt.lte = new Date(createdBefore);
     }
 
     const [prompts, total] = await Promise.all([

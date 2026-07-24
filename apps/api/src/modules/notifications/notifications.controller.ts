@@ -4,7 +4,6 @@ import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
 import { Permissions } from '@/common/decorators/permissions.decorator';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
-import { PaginationDto } from '@/common/dto/pagination.dto';
 import { NotificationsService } from './notifications.service';
 import { 
   CreateNotificationDto, 
@@ -38,10 +37,9 @@ export class NotificationsController {
   @Permissions('notifications.read')
   async findAll(
     @CurrentUser() user: any,
-    @Query() paginationDto: PaginationDto,
-    @Query() filters: NotificationFilterDto,
+    @Query() query: NotificationFilterDto,
   ) {
-    return this.notificationsService.findAll(user.companyId, user.id, paginationDto, filters);
+    return this.notificationsService.findAll(user.companyId, user.id, query, query);
   }
 
   @Get('count/unread')

@@ -4,7 +4,6 @@ import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
 import { Permissions } from '@/common/decorators/permissions.decorator';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
-import { PaginationDto } from '@/common/dto/pagination.dto';
 import { FileStorageService } from './file-storage.service';
 import { 
   CreateFileStorageDto, 
@@ -36,10 +35,9 @@ export class FileStorageController {
   @Permissions('files.read')
   async findAll(
     @CurrentUser() user: any,
-    @Query() paginationDto: PaginationDto,
-    @Query() filters: FileStorageFilterDto,
+    @Query() query: FileStorageFilterDto,
   ) {
-    return this.fileStorageService.findAll(user.companyId, paginationDto, filters);
+    return this.fileStorageService.findAll(user.companyId, query, query);
   }
 
   @Get('statistics')

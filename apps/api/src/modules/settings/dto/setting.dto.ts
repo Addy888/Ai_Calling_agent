@@ -1,5 +1,6 @@
 import { IsString, IsOptional, IsEnum, IsObject, IsBoolean } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { PaginationDto } from '@/common/dto/pagination.dto';
 
 export enum SettingType {
   STRING = 'STRING',
@@ -86,7 +87,7 @@ export class UpdateSettingDto {
   metadata?: any;
 }
 
-export class SettingFilterDto {
+export class SettingFilterDto extends PaginationDto {
   @ApiPropertyOptional({ description: 'Search query' })
   @IsOptional()
   @IsString()

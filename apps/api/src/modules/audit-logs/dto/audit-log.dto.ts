@@ -1,5 +1,6 @@
 import { IsString, IsOptional, IsObject, IsDateString } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { PaginationDto } from '@/common/dto/pagination.dto';
 
 export class CreateAuditLogDto {
   @ApiProperty({ description: 'Entity type that was modified' })
@@ -50,7 +51,7 @@ export class CreateAuditLogDto {
   metadata?: any;
 }
 
-export class AuditLogFilterDto {
+export class AuditLogFilterDto extends PaginationDto {
   @ApiPropertyOptional({ description: 'Search query' })
   @IsOptional()
   @IsString()

@@ -18,7 +18,6 @@ import {
 } from '@nestjs/swagger';
 import { PromptService } from './prompts.service';
 import { CreatePromptDto, UpdatePromptDto, PromptFilterDto, PromptStatus } from './dto/prompt.dto';
-import { PaginationDto } from '@/common/dto/pagination.dto';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 
@@ -43,10 +42,9 @@ export class PromptController {
   @ApiOperation({ summary: 'Get all prompts with pagination and filters' })
   findAll(
     @CurrentUser('companyId') companyId: string,
-    @Query() paginationDto: PaginationDto,
-    @Query() filters: PromptFilterDto,
+    @Query() query: PromptFilterDto,
   ) {
-    return this.promptService.findAll(companyId, paginationDto, filters);
+    return this.promptService.findAll(companyId, query, query);
   }
 
   @Get(':id')

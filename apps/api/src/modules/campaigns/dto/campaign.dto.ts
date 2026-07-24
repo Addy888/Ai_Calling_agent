@@ -1,16 +1,18 @@
-import { 
-  IsString, 
-  IsOptional, 
-  IsUUID, 
-  IsEnum, 
-  IsDateString, 
-  MaxLength, 
-  IsObject, 
+import {
+  IsString,
+  IsOptional,
+  IsUUID,
+  IsEnum,
+  IsDateString,
+  MaxLength,
+  IsObject,
   IsArray,
-  IsBoolean
+  IsBoolean,
+  ValidateNested,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
+import { PaginationDto } from '@/common/dto/pagination.dto';
 
 export enum CampaignStatus {
   DRAFT = 'DRAFT',
@@ -55,11 +57,13 @@ export class CreateCampaignDto {
   @ApiPropertyOptional({ example: '2024-07-15T09:00:00Z' })
   @IsDateString()
   @IsOptional()
+  @Transform(({ value }) => value ? new Date(value) : null)
   startDate?: string;
 
   @ApiPropertyOptional({ example: '2024-07-30T17:00:00Z' })
   @IsDateString()
   @IsOptional()
+  @Transform(({ value }) => value ? new Date(value) : null)
   endDate?: string;
 
   @ApiPropertyOptional({ example: 'America/New_York' })
@@ -93,7 +97,8 @@ export class UpdateCampaignStatusDto {
   status: CampaignStatus;
 }
 
-export class CampaignFilterDto {
+/** Nested filters object sent as filters[key]=value */
+export class CampaignFilterDetailsDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
@@ -102,7 +107,10 @@ export class CampaignFilterDto {
   @ApiPropertyOptional({ enum: CampaignStatus, isArray: true })
   @IsOptional()
   @IsEnum(CampaignStatus, { each: true })
-  @Transform(({ value }) => Array.isArray(value) ? value : [value])
+  @Transform(({ value }) => {
+    if (typeof value === 'string') return [value as CampaignStatus];
+    return value;
+  })
   status?: CampaignStatus[];
 
   @ApiPropertyOptional()
@@ -143,9 +151,75 @@ export class CampaignFilterDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
-  @Transform(({ value }) => value === 'true')
+  @Transform(({ value }) => value === 'true' || value === true)
   includeArchived?: boolean;
 }
+
+/**
+ * Combined query DTO for GET /campaigns.
+ * Extends PaginationDto so that page, limit, search, sortBy, sortOrder
+ * are all declared on this single DTO — used with a single @Query() decorator.
+ */
+export class CampaignQueryDto extends PaginationDto {
+  @ApiPropertyOptional({ enum: CampaignStatus, isArray: true })
+  @IsOptional()
+  @IsEnum(CampaignStatus, { each: true })
+  @Transform(({ value }) => {
+    if (typeof value === 'string') return [value as CampaignStatus];
+    return value;
+  })
+  status?: CampaignStatus[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  userId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  scriptId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  promptId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  startDateFrom?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  startDateTo?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  createdAfter?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  createdBefore?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => value === 'true' || value === true)
+  includeArchived?: boolean;
+
+  @ApiPropertyOptional({ type: CampaignFilterDetailsDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CampaignFilterDetailsDto)
+  filters?: CampaignFilterDetailsDto;
+}
+
+/** @deprecated — use CampaignQueryDto. Kept for backward compatibility with service layer. */
+export class CampaignFilterDto extends CampaignQueryDto {}
 
 export class AssignContactsDto {
   @ApiProperty({ example: ['uuid1', 'uuid2'] })

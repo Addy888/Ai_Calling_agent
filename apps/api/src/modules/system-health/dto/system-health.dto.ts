@@ -1,5 +1,6 @@
 import { IsString, IsOptional, IsNumber, IsObject, IsEnum } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { PaginationDto } from '@/common/dto/pagination.dto';
 
 export enum SystemStatus {
   HEALTHY = 'HEALTHY',
@@ -102,7 +103,7 @@ export class CreateSystemHealthDto {
   metadata?: any;
 }
 
-export class SystemHealthFilterDto {
+export class SystemHealthFilterDto extends PaginationDto {
   @ApiPropertyOptional({ description: 'Component filter', enum: SystemComponent })
   @IsOptional()
   @IsEnum(SystemComponent)

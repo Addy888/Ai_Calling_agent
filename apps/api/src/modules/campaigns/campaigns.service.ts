@@ -60,39 +60,49 @@ export class CampaignService {
       deletedAt: null,
     };
 
-    if (filters.search) {
+    const search = filters.search || filters.filters?.search;
+    const status = filters.status || filters.filters?.status;
+    const userId = filters.userId || filters.filters?.userId;
+    const scriptId = filters.scriptId || filters.filters?.scriptId;
+    const promptId = filters.promptId || filters.filters?.promptId;
+    const startDateFrom = filters.startDateFrom || filters.filters?.startDateFrom;
+    const startDateTo = filters.startDateTo || filters.filters?.startDateTo;
+    const createdAfter = filters.createdAfter || filters.filters?.createdAfter;
+    const createdBefore = filters.createdBefore || filters.filters?.createdBefore;
+
+    if (search) {
       where.OR = [
-        { name: { contains: filters.search } },
-        { description: { contains: filters.search } },
+        { name: { contains: search } },
+        { description: { contains: search } },
       ];
     }
 
-    if (filters.status && filters.status.length > 0) {
-      where.status = { in: filters.status };
+    if (status && status.length > 0) {
+      where.status = { in: status };
     }
 
-    if (filters.userId) {
-      where.userId = filters.userId;
+    if (userId) {
+      where.userId = userId;
     }
 
-    if (filters.scriptId) {
-      where.scriptId = filters.scriptId;
+    if (scriptId) {
+      where.scriptId = scriptId;
     }
 
-    if (filters.promptId) {
-      where.promptId = filters.promptId;
+    if (promptId) {
+      where.promptId = promptId;
     }
 
-    if (filters.startDateFrom || filters.startDateTo) {
+    if (startDateFrom || startDateTo) {
       where.startDate = {};
-      if (filters.startDateFrom) where.startDate.gte = new Date(filters.startDateFrom);
-      if (filters.startDateTo) where.startDate.lte = new Date(filters.startDateTo);
+      if (startDateFrom) where.startDate.gte = new Date(startDateFrom);
+      if (startDateTo) where.startDate.lte = new Date(startDateTo);
     }
 
-    if (filters.createdAfter || filters.createdBefore) {
+    if (createdAfter || createdBefore) {
       where.createdAt = {};
-      if (filters.createdAfter) where.createdAt.gte = new Date(filters.createdAfter);
-      if (filters.createdBefore) where.createdAt.lte = new Date(filters.createdBefore);
+      if (createdAfter) where.createdAt.gte = new Date(createdAfter);
+      if (createdBefore) where.createdAt.lte = new Date(createdBefore);
     }
 
     const [campaigns, total] = await Promise.all([

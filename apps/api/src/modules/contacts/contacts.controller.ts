@@ -24,7 +24,6 @@ import {
 import { ContactsService } from './contacts.service';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
-import { PaginationDto } from '@/common/dto/pagination.dto';
 import { Response } from 'express';
 import {
   CreateContactDto,
@@ -117,10 +116,9 @@ export class ContactsController {
   @ApiOperation({ summary: 'List contacts with pagination, search and filters' })
   findAll(
     @CurrentUser('companyId') companyId: string,
-    @Query() paginationDto: PaginationDto,
-    @Query() filters: ContactFilterDto,
+    @Query() query: ContactFilterDto,
   ) {
-    return this.contactsService.findAll(companyId, paginationDto, filters);
+    return this.contactsService.findAll(companyId, query, query);
   }
 
   @Post()

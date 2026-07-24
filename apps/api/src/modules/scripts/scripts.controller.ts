@@ -17,7 +17,6 @@ import {
 } from '@nestjs/swagger';
 import { ScriptService } from './scripts.service';
 import { CreateScriptDto, UpdateScriptDto, ScriptFilterDto } from './dto/script.dto';
-import { PaginationDto } from '@/common/dto/pagination.dto';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { RolesGuard } from '@/common/guards/roles.guard';
 import { Roles } from '@/common/decorators/roles.decorator';
@@ -45,10 +44,9 @@ export class ScriptController {
   @ApiOperation({ summary: 'Get all scripts with pagination and filters' })
   findAll(
     @CurrentUser('companyId') companyId: string,
-    @Query() paginationDto: PaginationDto,
-    @Query() filters: ScriptFilterDto,
+    @Query() query: ScriptFilterDto,
   ) {
-    return this.scriptService.findAll(companyId, paginationDto, filters);
+    return this.scriptService.findAll(companyId, query, query);
   }
 
   @Get(':id')

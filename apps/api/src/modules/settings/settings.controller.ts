@@ -4,7 +4,6 @@ import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
 import { Permissions } from '@/common/decorators/permissions.decorator';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
-import { PaginationDto } from '@/common/dto/pagination.dto';
 import { SettingService } from './settings.service';
 import { 
   CreateSettingDto, 
@@ -41,10 +40,9 @@ export class SettingController {
   @Permissions('settings.read')
   async findAll(
     @CurrentUser() user: any,
-    @Query() paginationDto: PaginationDto,
-    @Query() filters: SettingFilterDto,
+    @Query() query: SettingFilterDto,
   ) {
-    return this.settingService.findAll(user.companyId, paginationDto, filters);
+    return this.settingService.findAll(user.companyId, query, query);
   }
 
   @Get('all')

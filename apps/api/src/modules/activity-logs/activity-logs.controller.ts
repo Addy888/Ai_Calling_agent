@@ -38,11 +38,10 @@ export class ActivityLogsController {
   @ApiQuery({ name: 'createdAfter', required: false })
   @ApiQuery({ name: 'createdBefore', required: false })
   findAll(
-    @Query() paginationDto: PaginationDto,
-    @Query() filters: ActivityLogFilterDto,
+    @Query() query: ActivityLogFilterDto,
     @CurrentUser() user: any,
   ) {
-    return this.activityLogsService.findAll(paginationDto, user.companyId, filters);
+    return this.activityLogsService.findAll(query, user.companyId, query);
   }
 
   @Get('statistics')
