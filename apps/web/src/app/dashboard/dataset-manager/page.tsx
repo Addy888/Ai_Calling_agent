@@ -76,7 +76,7 @@ export default function DatasetManagerPage() {
     try {
       const response = await fetch('/api/v1/dataset/dashboard', {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 
@@ -102,7 +102,7 @@ export default function DatasetManagerPage() {
 
       const response = await fetch(`/api/v1/dataset?${params}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 
@@ -133,7 +133,7 @@ export default function DatasetManagerPage() {
       const response = await fetch(`/api/v1/dataset/${id}`, {
         method: 'DELETE',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 

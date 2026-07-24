@@ -31,7 +31,7 @@ export default function KnowledgeBuilderPage() {
       });
 
       const response = await fetch(`/api/v1/conversation-intelligence/knowledge?${params}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
       });
       const result = await response.json();
       setKnowledge(result.data || []);
@@ -45,7 +45,7 @@ export default function KnowledgeBuilderPage() {
   const fetchStats = async () => {
     try {
       const response = await fetch('/api/v1/conversation-intelligence/knowledge/stats', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
       });
       const data = await response.json();
       setStats(data);

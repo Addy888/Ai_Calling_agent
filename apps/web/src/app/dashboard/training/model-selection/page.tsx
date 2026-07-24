@@ -181,7 +181,7 @@ export default function ModelSelectionPage() {
   const loadAvailableModels = async () => {
     const response = await fetch('/api/training/model-selection/available-models', {
       headers: {
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
+        Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
       },
     });
 
@@ -194,7 +194,7 @@ export default function ModelSelectionPage() {
   const loadSelectedModel = async () => {
     const response = await fetch('/api/training/model-selection/selected', {
       headers: {
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
+        Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
       },
     });
 
@@ -207,7 +207,7 @@ export default function ModelSelectionPage() {
   const loadDatasets = async () => {
     const response = await fetch('/api/training/datasets', {
       headers: {
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
+        Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
       },
     });
 
@@ -225,7 +225,7 @@ export default function ModelSelectionPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
         body: JSON.stringify({
           modelRegistryId: selectedForAction.id,
@@ -258,7 +258,7 @@ export default function ModelSelectionPage() {
       const response = await fetch(`/api/training/model-selection/${selectedModel.id}`, {
         method: 'DELETE',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 
@@ -280,7 +280,7 @@ export default function ModelSelectionPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
         body: JSON.stringify({
           datasetId: datasetId || null,
@@ -308,7 +308,7 @@ export default function ModelSelectionPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
         body: JSON.stringify({
           modelRegistryId: recommendation.recommendedModelId,

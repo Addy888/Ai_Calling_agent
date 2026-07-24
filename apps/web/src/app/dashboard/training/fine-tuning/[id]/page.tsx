@@ -63,7 +63,7 @@ export default function FineTuningConfigDetailPage() {
     try {
       setLoading(true);
       const response = await fetch(`/api/training/fine-tuning-configs/${params.id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
       });
 
       if (response.ok) {
@@ -88,7 +88,7 @@ export default function FineTuningConfigDetailPage() {
       setValidating(true);
       const response = await fetch(`/api/training/fine-tuning-configs/${params.id}/validate`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
       });
 
       if (response.ok) {

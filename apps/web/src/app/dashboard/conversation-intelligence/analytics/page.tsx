@@ -47,7 +47,7 @@ export default function AnalyticsPage() {
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
-      const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
+      const headers = { Authorization: `Bearer ${localStorage.getItem('accessToken')}` };
 
       const [intents, objections, leads, trends, quality, emotions] = await Promise.all([
         fetch('/api/v1/conversation-intelligence/analytics/intent-distribution', {

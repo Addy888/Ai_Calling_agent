@@ -52,7 +52,7 @@ export default function ConversationIntelligencePage() {
     try {
       const response = await fetch('/api/v1/conversation-intelligence/dashboard', {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       const data = await response.json();
@@ -74,7 +74,7 @@ export default function ConversationIntelligencePage() {
 
       const response = await fetch(`/api/v1/conversation-intelligence/analysis?${params}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       const result = await response.json();

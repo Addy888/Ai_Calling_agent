@@ -47,7 +47,7 @@ export default function ModelDetailPage() {
     try {
       const response = await fetch(`/api/ai-agent/models/${modelId}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 

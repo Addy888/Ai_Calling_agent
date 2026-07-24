@@ -101,7 +101,7 @@ export default function ModelRegistryPage() {
 
       const response = await fetch(`/api/ai-agent/model-registry?${params}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 
@@ -120,7 +120,7 @@ export default function ModelRegistryPage() {
     try {
       const response = await fetch('/api/ai-agent/model-registry/statistics', {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 

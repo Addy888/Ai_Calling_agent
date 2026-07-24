@@ -110,7 +110,7 @@ export default function PipelineDetailsPage() {
       setLoading(true);
       const response = await fetch(`/api/training-pipeline/${params.id}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       
@@ -142,7 +142,7 @@ export default function PipelineDetailsPage() {
       const response = await fetch(`/api/training-pipeline/${params.id}/validate`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 
@@ -180,7 +180,7 @@ export default function PipelineDetailsPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
         body: JSON.stringify({
           pipelineId: params.id,

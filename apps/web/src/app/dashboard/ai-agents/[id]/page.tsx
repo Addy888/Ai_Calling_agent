@@ -46,7 +46,7 @@ export default function AgentDetailsPage() {
     try {
       const response = await fetch(`/api/v1/ai-agents/${params.id}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       if (response.ok) {
@@ -64,7 +64,7 @@ export default function AgentDetailsPage() {
     try {
       const response = await fetch(`/api/v1/ai-agents/sessions?agentId=${params.id}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       if (response.ok) {
@@ -80,7 +80,7 @@ export default function AgentDetailsPage() {
     try {
       const response = await fetch(`/api/v1/ai-agents/${params.id}/metrics?days=7`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       if (response.ok) {
@@ -96,7 +96,7 @@ export default function AgentDetailsPage() {
     try {
       const response = await fetch(`/api/v1/ai-agents/${params.id}/health`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       if (response.ok) {
@@ -113,7 +113,7 @@ export default function AgentDetailsPage() {
       const response = await fetch(`/api/v1/ai-agents/${params.id}/start`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       if (response.ok) {
@@ -131,7 +131,7 @@ export default function AgentDetailsPage() {
       const response = await fetch(`/api/v1/ai-agents/${params.id}/stop`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       if (response.ok) {
@@ -149,7 +149,7 @@ export default function AgentDetailsPage() {
       const response = await fetch(`/api/v1/ai-agents/${params.id}/pause`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       if (response.ok) {
@@ -166,7 +166,7 @@ export default function AgentDetailsPage() {
       const response = await fetch(`/api/v1/ai-agents/${params.id}/resume`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       if (response.ok) {

@@ -33,7 +33,7 @@ export default function QuestionLibraryPage() {
       });
 
       const response = await fetch(`/api/v1/conversation-intelligence/questions?${params}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
       });
       const result = await response.json();
       setQuestions(result.data || []);
@@ -47,7 +47,7 @@ export default function QuestionLibraryPage() {
   const fetchStats = async () => {
     try {
       const response = await fetch('/api/v1/conversation-intelligence/questions/stats', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
       });
       const data = await response.json();
       setStats(data);

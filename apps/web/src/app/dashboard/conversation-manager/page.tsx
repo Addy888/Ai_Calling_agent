@@ -60,12 +60,12 @@ export default function ConversationManagerPage() {
       const [sessionsRes, statsRes] = await Promise.all([
         fetch(`/api/conversation-manager/sessions?companyId=${companyId}&limit=10`, {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
           },
         }),
         fetch(`/api/conversation-manager/sessions/stats?companyId=${companyId}`, {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
           },
         }),
       ]);

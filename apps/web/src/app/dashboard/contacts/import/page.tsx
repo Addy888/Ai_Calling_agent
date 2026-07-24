@@ -8,6 +8,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, UploadCloud, FileType, CheckCircle2, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
+import { contactApi } from '@/lib/api';
 
 export default function ImportContactsPage() {
   const { toast } = useToast();
@@ -35,25 +36,16 @@ export default function ImportContactsPage() {
     formData.append('file', file);
 
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/contacts/bulk-upload`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      const data = await res.json();
+      const res = await contactApi.import(formData);
       
-      if (res.ok && data.success) {
-        setResult(data.data);
+      if (res.data.success) {
+        setResult(res.data.data);
         toast({ description: 'File processed successfully' });
       } else {
-        throw new Error(data.message || data.error?.message || 'Failed to upload file');
+        throw new Error(res.data.message || 'Failed to upload file');
       }
     } catch (error: any) {
-      toast({ description: error.message, variant: 'destructive' });
+      toast({ description: error.response?.data?.message || error.message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }

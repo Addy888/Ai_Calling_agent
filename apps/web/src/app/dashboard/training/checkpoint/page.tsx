@@ -87,7 +87,7 @@ export default function CheckpointDashboardPage() {
 
       const response = await fetch(`/api/training/checkpoint-configs?${params}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 
@@ -116,7 +116,7 @@ export default function CheckpointDashboardPage() {
     try {
       const response = await fetch('/api/training/checkpoint-configs/statistics', {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 

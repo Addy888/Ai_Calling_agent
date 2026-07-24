@@ -11,6 +11,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeft, Save } from 'lucide-react';
 import Link from 'next/link';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { contactApi } from '@/lib/api';
 
 export default function EditContactPage() {
   const { id } = useParams();
@@ -40,13 +41,9 @@ export default function EditContactPage() {
   useEffect(() => {
     const fetchContact = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/contacts/${id}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        if (data.success) {
-          const contact = data.data;
+        const res = await contactApi.getById(id as string);
+        if (res.data.success) {
+          const contact = res.data.data;
           setFormData({
             firstName: contact.firstName || '',
             lastName: contact.lastName || '',
@@ -88,32 +85,21 @@ export default function EditContactPage() {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
-      
       const payload = {
         ...formData,
         tags: formData.tags ? formData.tags.split(',').map(t => t.trim()).filter(Boolean) : [],
       };
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/contacts/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
+      const res = await contactApi.update(id as string, payload);
       
-      if (res.ok && data.success) {
+      if (res.data.success) {
         toast({ description: 'Contact updated successfully' });
         router.push('/dashboard/contacts');
       } else {
-        throw new Error(data.message || data.error?.message || 'Failed to update contact');
+        throw new Error(res.data.message || 'Failed to update contact');
       }
     } catch (error: any) {
-      toast({ description: error.message, variant: 'destructive' });
+      toast({ description: error.response?.data?.message || error.message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }

@@ -79,7 +79,7 @@ export default function ModelLibraryPage() {
 
       const response = await fetch(`/api/ai-agent/models?${params}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 
@@ -98,7 +98,7 @@ export default function ModelLibraryPage() {
     try {
       const response = await fetch('/api/ai-agent/models/statistics', {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 

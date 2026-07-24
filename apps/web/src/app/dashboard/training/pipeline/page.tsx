@@ -113,7 +113,7 @@ export default function TrainingPipelinePage() {
       setLoading(true);
       const response = await fetch('/api/training-pipeline', {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       
@@ -137,7 +137,7 @@ export default function TrainingPipelinePage() {
     try {
       const response = await fetch('/api/training-manager/training-versions', {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       
@@ -165,7 +165,7 @@ export default function TrainingPipelinePage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
         body: JSON.stringify({
           trainingSessionId: selectedSession,
@@ -207,7 +207,7 @@ export default function TrainingPipelinePage() {
       const response = await fetch(`/api/training-pipeline/${pipelineId}/validate`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 
@@ -243,7 +243,7 @@ export default function TrainingPipelinePage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
         body: JSON.stringify({
           pipelineId,
@@ -284,7 +284,7 @@ export default function TrainingPipelinePage() {
       const response = await fetch(`/api/training-pipeline/${pipelineId}`, {
         method: 'DELETE',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 

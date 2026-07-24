@@ -42,7 +42,7 @@ export function VoiceSettings({ agentId }: VoiceSettingsProps) {
     try {
       const response = await fetch('/api/v1/voice-studio/configuration', {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       if (response.ok) {
@@ -63,7 +63,7 @@ export function VoiceSettings({ agentId }: VoiceSettingsProps) {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
         body: JSON.stringify(config),
       });

@@ -43,7 +43,7 @@ export default function StrategyDetailPage() {
       setLoading(true);
       const response = await fetch(`/api/training/strategies/${params.id}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 
@@ -64,7 +64,7 @@ export default function StrategyDetailPage() {
       const response = await fetch(`/api/training/strategies/${params.id}/validate`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 
@@ -98,7 +98,7 @@ export default function StrategyDetailPage() {
       const response = await fetch(`/api/training/strategies/${params.id}`, {
         method: 'DELETE',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 

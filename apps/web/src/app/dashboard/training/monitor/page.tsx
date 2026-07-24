@@ -48,7 +48,7 @@ export default function TrainingMonitorListPage() {
   const fetchTrainingSessions = async () => {
     try {
       setIsLoading(true);
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('accessToken');
       const response = await axios.get(`${API_URL}/api/training-manager/sessions`, {
         headers: { Authorization: `Bearer ${token}` },
       });

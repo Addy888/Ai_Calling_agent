@@ -48,7 +48,7 @@ export default function DatasetDetailPage() {
       setLoading(true);
       const response = await fetch(`/api/v1/dataset/${params.id}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 
@@ -68,7 +68,7 @@ export default function DatasetDetailPage() {
       const response = await fetch(`/api/v1/dataset/${params.id}/process-all`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 
@@ -101,7 +101,7 @@ export default function DatasetDetailPage() {
       const response = await fetch(`/api/v1/dataset/${params.id}/${endpoints[stage]}`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 

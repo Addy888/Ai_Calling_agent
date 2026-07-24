@@ -20,7 +20,7 @@ export default function ObjectionsPage() {
       const response = await fetch(
         '/api/v1/conversation-intelligence/analytics/objection-distribution',
         {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+          headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
         }
       );
       const data = await response.json();

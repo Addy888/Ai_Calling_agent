@@ -99,7 +99,7 @@ export default function TrainingStrategyPage() {
 
       const response = await fetch(`/api/training/strategies?${params}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 
@@ -129,7 +129,7 @@ export default function TrainingStrategyPage() {
     try {
       const response = await fetch('/api/training/strategies/statistics', {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 

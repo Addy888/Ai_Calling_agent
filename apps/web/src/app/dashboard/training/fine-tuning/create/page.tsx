@@ -70,7 +70,7 @@ export default function CreateFineTuningConfigPage() {
   const fetchBaseModels = async () => {
     try {
       const response = await fetch('/api/training/model-registry', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
       });
       if (response.ok) {
         const result = await response.json();
@@ -84,7 +84,7 @@ export default function CreateFineTuningConfigPage() {
   const fetchDatasets = async () => {
     try {
       const response = await fetch('/api/ai-agent/training-datasets', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
       });
       if (response.ok) {
         const result = await response.json();
@@ -128,7 +128,7 @@ export default function CreateFineTuningConfigPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
         body: JSON.stringify(payload),
       });

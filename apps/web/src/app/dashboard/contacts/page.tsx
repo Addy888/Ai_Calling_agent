@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { useToast } from '@/components/ui/use-toast';
 import { useRouter } from 'next/navigation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { contactApi } from '@/lib/api';
 
 export default function ContactsPage() {
   const [contacts, setContacts] = useState<any[]>([]);
@@ -25,24 +26,20 @@ export default function ContactsPage() {
   const fetchContacts = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: '10',
-      });
+      const params: any = {
+        page,
+        limit: 10,
+      };
       
-      if (search) params.append('search', search);
-      if (statusFilter && statusFilter !== 'all') params.append('status', statusFilter);
+      if (search) params.search = search;
+      if (statusFilter && statusFilter !== 'all') params.status = statusFilter;
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/contacts?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await contactApi.getAll(params);
       
-      const data = await res.json();
-      if (data.success) {
-        setContacts(data.data.items || []);
-        setTotalPages(data.data.meta?.totalPages || 1);
-        setTotal(data.data.meta?.totalItems || 0);
+      if (res.data.success) {
+        setContacts(res.data.data.items || []);
+        setTotalPages(res.data.data.meta?.totalPages || 1);
+        setTotal(res.data.data.meta?.totalItems || 0);
       }
     } catch (error) {
       toast({ description: 'Error fetching contacts', variant: 'destructive' });
@@ -58,12 +55,8 @@ export default function ContactsPage() {
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this contact?')) return;
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/contacts/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
+      const res = await contactApi.delete(id);
+      if (res.data.success) {
         toast({ description: 'Contact deleted successfully' });
         fetchContacts();
       }
@@ -74,17 +67,12 @@ export default function ContactsPage() {
 
   const handleExport = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const params = new URLSearchParams();
-      if (search) params.append('search', search);
-      if (statusFilter && statusFilter !== 'all') params.append('status', statusFilter);
+      const params: any = {};
+      if (search) params.search = search;
+      if (statusFilter && statusFilter !== 'all') params.status = statusFilter;
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/contacts/export?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      
-      if (!res.ok) throw new Error('Failed to export');
-      const blob = await res.blob();
+      const res = await contactApi.export(params);
+      const blob = new Blob([res.data]);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -96,6 +84,7 @@ export default function ContactsPage() {
       toast({ description: 'Error exporting contacts', variant: 'destructive' });
     }
   };
+
 
   return (
     <div className="space-y-6">

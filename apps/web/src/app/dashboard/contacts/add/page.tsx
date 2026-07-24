@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Save } from 'lucide-react';
 import Link from 'next/link';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { contactApi } from '@/lib/api';
 
 export default function AddContactPage() {
   const { toast } = useToast();
@@ -48,32 +49,21 @@ export default function AddContactPage() {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
-      
       const payload = {
         ...formData,
         tags: formData.tags ? formData.tags.split(',').map(t => t.trim()).filter(Boolean) : [],
       };
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/contacts`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
+      const res = await contactApi.create(payload);
       
-      if (res.ok && data.success) {
+      if (res.data.success) {
         toast({ description: 'Contact created successfully' });
         router.push('/dashboard/contacts');
       } else {
-        throw new Error(data.message || data.error?.message || 'Failed to create contact');
+        throw new Error(res.data.message || 'Failed to create contact');
       }
     } catch (error: any) {
-      toast({ description: error.message, variant: 'destructive' });
+      toast({ description: error.response?.data?.message || error.message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }

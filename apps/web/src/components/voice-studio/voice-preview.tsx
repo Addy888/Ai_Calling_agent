@@ -56,7 +56,7 @@ export function VoicePreview({ agentId }: VoicePreviewProps) {
     try {
       const response = await fetch('/api/v1/voice-studio/voices', {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       if (response.ok) {
@@ -100,7 +100,7 @@ export function VoicePreview({ agentId }: VoicePreviewProps) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
         body: JSON.stringify({
           voiceId: selectedVoice,

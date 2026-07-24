@@ -69,7 +69,7 @@ export default function AIAgentsPage() {
     try {
       const response = await fetch('/api/v1/ai-agents', {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       if (response.ok) {
@@ -89,7 +89,7 @@ export default function AIAgentsPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
         body: JSON.stringify(formData),
       });
@@ -116,7 +116,7 @@ export default function AIAgentsPage() {
       const response = await fetch(`/api/v1/ai-agents/${id}/start`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 
@@ -141,7 +141,7 @@ export default function AIAgentsPage() {
       const response = await fetch(`/api/v1/ai-agents/${id}/stop`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 

@@ -85,7 +85,7 @@ export default function HyperparameterConfigPage() {
       if (statusFilter !== 'all') params.append('status', statusFilter);
 
       const response = await fetch(`/api/training/hyperparameter-configs?${params}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
       });
 
       if (response.ok) {
@@ -110,7 +110,7 @@ export default function HyperparameterConfigPage() {
     try {
       const response = await fetch(`/api/training/hyperparameter-configs/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
       });
 
       if (response.ok) {

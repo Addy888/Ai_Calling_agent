@@ -83,7 +83,7 @@ export default function FineTuningConfigPage() {
 
       const response = await fetch(`/api/training/fine-tuning-configs?${params}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 
@@ -112,7 +112,7 @@ export default function FineTuningConfigPage() {
       const response = await fetch(`/api/training/fine-tuning-configs/${id}`, {
         method: 'DELETE',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 

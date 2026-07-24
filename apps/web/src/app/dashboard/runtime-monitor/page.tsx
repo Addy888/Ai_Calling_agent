@@ -44,7 +44,7 @@ export default function RuntimeMonitorPage() {
     try {
       const response = await fetch('/api/ai-agent/health/system', {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       if (response.ok) {
@@ -60,7 +60,7 @@ export default function RuntimeMonitorPage() {
     try {
       const response = await fetch('/api/ai-agent', {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       if (response.ok) {
@@ -76,7 +76,7 @@ export default function RuntimeMonitorPage() {
     try {
       const response = await fetch('/api/ai-agent/metrics/company?days=7', {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       if (response.ok) {
@@ -92,7 +92,7 @@ export default function RuntimeMonitorPage() {
     try {
       const response = await fetch('/api/ai-agent/pool/statistics', {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       if (response.ok) {

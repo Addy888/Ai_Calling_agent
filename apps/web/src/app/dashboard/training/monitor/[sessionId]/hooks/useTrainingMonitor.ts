@@ -44,7 +44,7 @@ export function useTrainingMonitor(sessionId: string) {
 
   // Initialize WebSocket connection
   useEffect(() => {
-    const token = localStorage.getItem('token'); // Get auth token
+    const token = localStorage.getItem('accessToken'); // Get auth token
     const companyId = localStorage.getItem('companyId'); // Get company ID
 
     const newSocket = io(`${API_URL}/training-monitor`, {
@@ -123,7 +123,7 @@ export function useTrainingMonitor(sessionId: string) {
         setIsLoading(true);
         setError(null);
 
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('accessToken');
         const headers = { Authorization: `Bearer ${token}` };
 
         // Fetch training status
@@ -167,7 +167,7 @@ export function useTrainingMonitor(sessionId: string) {
   // Manual refresh function
   const refreshStatus = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('accessToken');
       const headers = { Authorization: `Bearer ${token}` };
 
       const statusRes = await axios.get(
@@ -191,7 +191,7 @@ export function useTrainingMonitor(sessionId: string) {
   const exportLogs = useCallback(
     async (format: string = 'json') => {
       try {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('accessToken');
         const response = await axios.post(
           `${API_URL}/api/training/monitor/logs/${sessionId}/export`,
           {},

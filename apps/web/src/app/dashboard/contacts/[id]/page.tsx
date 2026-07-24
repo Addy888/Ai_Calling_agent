@@ -7,6 +7,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeft, Edit, Mail, Phone, MapPin, Building, Globe, Clock, Tag } from 'lucide-react';
 import Link from 'next/link';
+import { contactApi } from '@/lib/api';
 
 export default function ContactDetailsPage() {
   const { id } = useParams();
@@ -18,13 +19,9 @@ export default function ContactDetailsPage() {
   useEffect(() => {
     const fetchContact = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/contacts/${id}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        if (data.success) {
-          setContact(data.data);
+        const res = await contactApi.getById(id as string);
+        if (res.data.success) {
+          setContact(res.data.data);
         } else {
           toast({ description: 'Contact not found', variant: 'destructive' });
           router.push('/dashboard/contacts');

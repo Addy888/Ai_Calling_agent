@@ -53,7 +53,7 @@ export default function ModelDetailsPage() {
     try {
       const response = await fetch(`/api/ai-agent/model-registry/${modelId}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 
@@ -74,7 +74,7 @@ export default function ModelDetailsPage() {
         `/api/ai-agent/model-registry/${modelId}/versions`,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
           },
         },
       );
@@ -94,7 +94,7 @@ export default function ModelDetailsPage() {
         `/api/ai-agent/model-registry/${modelId}/history`,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
           },
         },
       );
@@ -116,7 +116,7 @@ export default function ModelDetailsPage() {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
           },
           body: JSON.stringify({ reason: 'Activated from UI' }),
         },
@@ -137,7 +137,7 @@ export default function ModelDetailsPage() {
         {
           method: 'PATCH',
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
           },
         },
       );
@@ -158,7 +158,7 @@ export default function ModelDetailsPage() {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
           },
           body: JSON.stringify({ reason: 'Archived from UI' }),
         },
@@ -179,7 +179,7 @@ export default function ModelDetailsPage() {
         {
           method: 'PATCH',
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
           },
         },
       );

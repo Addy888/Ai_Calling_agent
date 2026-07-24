@@ -70,7 +70,7 @@ export function VoiceLibrary({ agentId }: VoiceLibraryProps) {
     try {
       const response = await fetch('/api/v1/voice-studio/voices', {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       if (response.ok) {
@@ -88,7 +88,7 @@ export function VoiceLibrary({ agentId }: VoiceLibraryProps) {
     try {
       const response = await fetch('/api/v1/voice-studio/providers', {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       if (response.ok) {
@@ -108,7 +108,7 @@ export function VoiceLibrary({ agentId }: VoiceLibraryProps) {
     try {
       const response = await fetch(`/api/v1/voice-studio/providers/${providerType}/available-voices`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       if (response.ok) {
@@ -126,7 +126,7 @@ export function VoiceLibrary({ agentId }: VoiceLibraryProps) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
         body: JSON.stringify(formData),
       });
@@ -154,7 +154,7 @@ export function VoiceLibrary({ agentId }: VoiceLibraryProps) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
         body: JSON.stringify({ voiceId }),
       });

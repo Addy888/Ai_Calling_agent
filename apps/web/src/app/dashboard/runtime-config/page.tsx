@@ -47,7 +47,7 @@ export default function RuntimeConfigPage() {
     try {
       const response = await fetch('/api/ai-agent/runtime/configuration', {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       if (response.ok) {
@@ -68,7 +68,7 @@ export default function RuntimeConfigPage() {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
         body: JSON.stringify(config),
       });

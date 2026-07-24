@@ -33,11 +33,53 @@ export const api = axios.create({
 // Export as apiClient for compatibility
 export const apiClient = api;
 
+// Helper: decode JWT payload without verifying (client-side only)
+function decodeJwtPayload(token: string): { exp?: number } | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    return JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+  } catch {
+    return null;
+  }
+}
+
+// Helper: proactive token refresh if token expires within 60 seconds
+async function ensureFreshToken(): Promise<string | null> {
+  if (typeof window === 'undefined') return null;
+  const token = localStorage.getItem('accessToken');
+  if (!token) return null;
+
+  const payload = decodeJwtPayload(token);
+  const nowSec = Math.floor(Date.now() / 1000);
+
+  // If token expires within 60 seconds, refresh it proactively
+  if (payload?.exp && payload.exp - nowSec < 60) {
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (!refreshToken) return null;
+    try {
+      const res = await axios.post(`${API_URL}/auth/refresh`, { refreshToken });
+      const { accessToken, refreshToken: newRefreshToken } = res.data.data;
+      localStorage.setItem('accessToken', accessToken);
+      if (newRefreshToken) localStorage.setItem('refreshToken', newRefreshToken);
+      return accessToken;
+    } catch {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+      if (typeof window !== 'undefined') window.location.href = '/login';
+      return null;
+    }
+  }
+
+  return token;
+}
+
 // Request interceptor to add auth token
 api.interceptors.request.use(
-  (config) => {
+  async (config) => {
     if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('accessToken');
+      const token = await ensureFreshToken();
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -48,6 +90,7 @@ api.interceptors.request.use(
     return Promise.reject(error);
   }
 );
+
 
 // Response interceptor for handling auth errors
 api.interceptors.response.use(
@@ -66,8 +109,11 @@ api.interceptors.response.use(
               refreshToken,
             });
 
-            const { accessToken } = response.data.data;
+            const { accessToken, refreshToken: newRefreshToken } = response.data.data;
             localStorage.setItem('accessToken', accessToken);
+            if (newRefreshToken) {
+              localStorage.setItem('refreshToken', newRefreshToken);
+            }
 
             originalRequest.headers.Authorization = `Bearer ${accessToken}`;
             return api(originalRequest);
@@ -276,3 +322,34 @@ export const scriptEngineApi = {
   deleteVariable: (id: string) =>
     api.delete<ApiResponse<any>>(`/script-engine/variables/${id}`),
 };
+
+// ── Contact API ─────────────────────────────────────────────────────────────
+export const contactApi = {
+  getAll: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+  }) =>
+    api.get<ApiResponse<PaginatedResponse<Contact>>>('/contacts', { params }),
+
+  getById: (id: string) =>
+    api.get<ApiResponse<Contact>>(`/contacts/${id}`),
+
+  create: (data: any) =>
+    api.post<ApiResponse<Contact>>('/contacts', data),
+
+  update: (id: string, data: any) =>
+    api.patch<ApiResponse<Contact>>(`/contacts/${id}`, data),
+
+  delete: (id: string) =>
+    api.delete<ApiResponse<{ message: string }>>(`/contacts/${id}`),
+
+  import: (formData: FormData) =>
+    api.post<ApiResponse<{ imported: number }>>('/contacts/bulk-upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+
+  export: (params?: { search?: string; status?: string }) =>
+    api.get('/contacts/export', { params, responseType: 'blob' }),
+};

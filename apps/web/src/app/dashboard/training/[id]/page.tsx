@@ -50,7 +50,7 @@ export default function DatasetDetailsPage() {
     try {
       const response = await fetch(`/api/ai-agent/training-datasets/${datasetId}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 
@@ -69,7 +69,7 @@ export default function DatasetDetailsPage() {
     try {
       const response = await fetch(`/api/ai-agent/training-datasets/${datasetId}/statistics`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 
@@ -86,7 +86,7 @@ export default function DatasetDetailsPage() {
     try {
       const response = await fetch(`/api/ai-agent/training-datasets/${datasetId}/preview?limit=10`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 
@@ -105,7 +105,7 @@ export default function DatasetDetailsPage() {
       const response = await fetch(`/api/ai-agent/training-datasets/${datasetId}/validate`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 

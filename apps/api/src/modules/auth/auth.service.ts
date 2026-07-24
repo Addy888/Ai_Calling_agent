@@ -280,7 +280,7 @@ export class AuthService {
     // Generate access token
     const accessToken = this.jwtService.sign(payload, {
       secret: this.configService.get<string>('JWT_SECRET') || 'your-super-secret-jwt-key-change-this-in-production-use-at-least-32-characters',
-      expiresIn: this.configService.get<string>('JWT_EXPIRES_IN') || '15m',
+      expiresIn: this.configService.get<string>('JWT_EXPIRES_IN') || '8h',
     });
 
     // Generate refresh token
@@ -306,7 +306,7 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
-      expiresIn: this.configService.get<string>('JWT_EXPIRES_IN') || '15m',
+      expiresIn: this.configService.get<string>('JWT_EXPIRES_IN') || '8h',
     };
   }
 

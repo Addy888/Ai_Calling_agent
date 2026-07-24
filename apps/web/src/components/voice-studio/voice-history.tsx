@@ -70,7 +70,7 @@ export function VoiceHistory({ agentId }: VoiceHistoryProps) {
 
       const response = await fetch(`/api/v1/voice-studio/history?${params}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 
