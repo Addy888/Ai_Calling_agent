@@ -14,6 +14,9 @@ from app.training_executor.api import router as training_executor_router
 from app.trainer.api import router as trainer_router
 from app.peft.api import router as peft_router
 from app.optimizer.api import router as optimizer_router
+from app.checkpoint.api import router as checkpoint_router
+from app.metrics.api import router as metrics_router
+from app.distributed.api import router as distributed_router
 from app.health import router as health_router
 from app.logger import training_logger
 from app.middleware import (
@@ -56,6 +59,9 @@ app.include_router(training_executor_router, prefix=settings.API_PREFIX, tags=["
 app.include_router(trainer_router, prefix=settings.API_PREFIX, tags=["Trainer"])
 app.include_router(peft_router, prefix=settings.API_PREFIX, tags=["PEFT"])
 app.include_router(optimizer_router, prefix=settings.API_PREFIX, tags=["Optimizer"])
+app.include_router(checkpoint_router, prefix=settings.API_PREFIX, tags=["Checkpoint"])
+app.include_router(metrics_router, prefix=settings.API_PREFIX, tags=["Metrics"])
+app.include_router(distributed_router, prefix=settings.API_PREFIX, tags=["Distributed"])
 
 
 @app.on_event("startup")

@@ -192,10 +192,10 @@ export default function TrainingEvaluationPage() {
     return 'text-red-600';
   };
 
-  const filteredEvaluations = evaluations.filter((eval) => {
-    const matchesSearch = eval.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = filterType === 'all' || eval.evaluationType === filterType;
-    const matchesStatus = filterStatus === 'all' || eval.approvalStatus === filterStatus;
+  const filteredEvaluations = evaluations.filter((evaluation) => {
+    const matchesSearch = evaluation.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = filterType === 'all' || evaluation.evaluationType === filterType;
+    const matchesStatus = filterStatus === 'all' || evaluation.approvalStatus === filterStatus;
     return matchesSearch && matchesType && matchesStatus;
   });
 

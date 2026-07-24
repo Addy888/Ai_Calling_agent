@@ -47,6 +47,46 @@ class EventType(str, Enum):
     WARMUP_STARTED = "warmup_started"
     WARMUP_COMPLETED = "warmup_completed"
 
+    # Checkpoint events
+    CHECKPOINT_STARTED = "checkpoint_started"
+    CHECKPOINT_COMPLETED = "checkpoint_completed"
+    CHECKPOINT_FAILED = "checkpoint_failed"
+    CHECKPOINT_DELETED = "checkpoint_deleted"
+    CHECKPOINT_VALIDATED = "checkpoint_validated"
+    
+    # Resume events
+    RESUME_STARTED = "resume_started"
+    RESUME_COMPLETED = "resume_completed"
+    RESUME_FAILED = "resume_failed"
+    
+    # Recovery events
+    RECOVERY_STARTED = "recovery_started"
+    RECOVERY_COMPLETED = "recovery_completed"
+    RECOVERY_FAILED = "recovery_failed"
+    
+    # Metrics events
+    METRICS_UPDATED = "metrics_updated"
+    LOGGER_STARTED = "logger_started"
+    LOGGER_STOPPED = "logger_stopped"
+    TRAINING_STALLED = "training_stalled"
+    GPU_WARNING = "gpu_warning"
+    MEMORY_WARNING = "memory_warning"
+    LOSS_WARNING = "loss_warning"
+    ALERT_GENERATED = "alert_generated"
+    
+    # Distributed training events (Phase 4.4.4.5.7)
+    DISTRIBUTED_INITIALIZED = "distributed_initialized"
+    DISTRIBUTED_SHUTDOWN = "distributed_shutdown"
+    DISTRIBUTED_WORKER_REGISTERED = "distributed_worker_registered"
+    DISTRIBUTED_WORKER_FAILED = "distributed_worker_failed"
+    DISTRIBUTED_WORKER_RECOVERED = "distributed_worker_recovered"
+    DISTRIBUTED_BARRIER_SYNC = "distributed_barrier_sync"
+    DISTRIBUTED_CHECKPOINT_SAVED = "distributed_checkpoint_saved"
+    DISTRIBUTED_METRICS_COLLECTED = "distributed_metrics_collected"
+    CLUSTER_INITIALIZED = "cluster_initialized"
+    CLUSTER_NODE_JOINED = "cluster_node_joined"
+    CLUSTER_NODE_FAILED = "cluster_node_failed"
+
 
 class EventBus:
     """Simple event bus for component communication."""

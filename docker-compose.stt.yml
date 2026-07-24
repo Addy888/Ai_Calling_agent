@@ -1,0 +1,65 @@
+# Docker Compose for STT Development Environment
+version: '3.8'
+
+services:
+  # Faster Whisper STT Service
+  whisper-stt:
+    build:
+      context: ./apps/whisper-service
+      dockerfile: Dockerfile
+    container_name: ai-calling-whisper-stt
+    ports:
+      - "9000:9000"
+    environment:
+      - WHISPER_MODEL_SIZE=${WHISPER_MODEL_SIZE:-base}
+      - PORT=9000
+      - HOST=0.0.0.0
+      - WHISPER_NUM_WORKERS=2
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - whisper-models:/app/models
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import requests; requests.get('http://localhost:9000/health').raise_for_status()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    # Uncomment for GPU support
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    networks:
+      - ai-calling-network
+
+  # Redis for caching transcripts (optional)
+  redis-stt:
+    image: redis:7-alpine
+    container_name: ai-calling-redis-stt
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis-stt-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - ai-calling-network
+
+volumes:
+  whisper-models:
+    driver: local
+  redis-stt-data:
+    driver: local
+
+networks:
+  ai-calling-network:
+    driver: bridge

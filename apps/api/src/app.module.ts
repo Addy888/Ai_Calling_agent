@@ -39,6 +39,15 @@ import { TrainingManagerModule } from './modules/training-manager/training-manag
 import { DatasetBuilderModule } from './modules/dataset-builder/dataset-builder.module';
 import { ValidationEngineModule } from './modules/validation-engine/validation-engine.module';
 import { AIAgentModule } from './modules/ai-agent/ai-agent.module';
+import { CallingPipelineModule } from './modules/calling-pipeline/calling-pipeline.module';
+import { SpeechRecognitionModule } from './modules/speech-recognition/speech-recognition.module';
+import { TelephonyModule } from './modules/telephony/telephony.module';
+import { SpeechModule } from './modules/speech/speech.module';
+import { ConversationEngineModule } from './modules/conversation-engine/conversation-engine.module';
+import { CallOrchestratorModule } from './modules/call-orchestrator/call-orchestrator.module';
+import { WebhooksModule } from './modules/webhooks/webhooks.module';
+import { CampaignApiModule } from './modules/campaign-api/campaign-api.module';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 @Module({
   imports: [
@@ -46,6 +55,13 @@ import { AIAgentModule } from './modules/ai-agent/ai-agent.module';
       isGlobal: true,
       envFilePath: ['.env.local', '.env'],
       cache: true,
+    }),
+    EventEmitterModule.forRoot({
+      wildcard: true,
+      delimiter: '.',
+      maxListeners: 20,
+      verboseMemoryLeak: true,
+      ignoreErrors: false,
     }),
     PrismaModule,
     AuthModule,
@@ -78,6 +94,14 @@ import { AIAgentModule } from './modules/ai-agent/ai-agent.module';
     DatasetBuilderModule,
     ValidationEngineModule,
     AIAgentModule,
+    CallingPipelineModule,
+    SpeechRecognitionModule,
+    TelephonyModule,
+    SpeechModule,
+    ConversationEngineModule,
+    CallOrchestratorModule,
+    WebhooksModule,
+    CampaignApiModule,
   ],
   providers: [
     {

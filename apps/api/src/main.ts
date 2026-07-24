@@ -102,6 +102,7 @@ async function bootstrap() {
     .addTag('Knowledge Base', 'Knowledge base management endpoints')
     .addTag('Voice Profiles', 'Voice profile management endpoints')
     .addTag('Calls', 'Call management endpoints')
+    .addTag('Calling Pipeline', 'AI Calling Pipeline orchestration endpoints')
     .addTag('Analytics', 'Analytics and reporting endpoints')
     .addTag('Settings', 'Settings management endpoints')
     .addTag('Activity Logs', 'Activity log endpoints')

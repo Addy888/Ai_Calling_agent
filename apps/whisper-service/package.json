@@ -1,0 +1,30 @@
+{
+  "name": "whisper-stt-service",
+  "version": "1.0.0",
+  "description": "Faster Whisper Speech-to-Text microservice for AI Calling Agent",
+  "main": "main.py",
+  "scripts": {
+    "start": "python main.py",
+    "dev": "python main.py",
+    "docker:build": "docker build -t whisper-stt:latest .",
+    "docker:run": "docker run -p 9000:9000 --env-file .env whisper-stt:latest",
+    "docker:run:gpu": "docker run --gpus all -p 9000:9000 --env-file .env whisper-stt:latest",
+    "test": "pytest tests/",
+    "lint": "flake8 .",
+    "format": "black ."
+  },
+  "keywords": [
+    "whisper",
+    "speech-to-text",
+    "stt",
+    "transcription",
+    "ai",
+    "fastapi"
+  ],
+  "author": "AI Calling Agent Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/ai-calling-agent"
+  }
+}

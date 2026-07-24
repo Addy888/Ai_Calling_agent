@@ -1,211 +1,132 @@
-# Phase 4.3.1 - Quick Start Guide
+# 🚀 AI Calling Agent - Quick Start
 
-## 🚀 Setup in 3 Steps
+> Get your AI calling system running in 10 minutes!
 
-### Option A: Automated Setup (Recommended)
+## ⚡ Super Quick Start
+
+```bash
+# 1. Install everything
+npm install && cd apps/api && npm install twilio openai xlsx && cd ../..
+
+# 2. Configure
+copy .env.example .env
+# Edit .env and add your API keys
+
+# 3. Setup database
+npm run db:generate && npm run db:migrate
+
+# 4. Create storage
+mkdir storage\recordings storage\transcripts
+
+# 5. Run
+npm run dev
+```
+
+## 🔑 Required API Keys
+
+Add these to `.env`:
+
+```env
+OPENAI_API_KEY=sk-...              # Get from platform.openai.com
+ELEVENLABS_API_KEY=...             # Get from elevenlabs.io
+TWILIO_ACCOUNT_SID=AC...           # Get from console.twilio.com
+TWILIO_AUTH_TOKEN=...              # Get from console.twilio.com
+TWILIO_PHONE_NUMBER=+1...          # Get from console.twilio.com
+DATABASE_URL=mysql://root:pass@localhost:3306/ai_calling_agent
+```
+
+## 📞 Make Your First Call
+
+```bash
+# Windows PowerShell
+$API = "http://localhost:3001/api/v1"
+
+# 1. Create campaign
+$c = (Invoke-RestMethod "$API/campaigns" -Method POST -Body '{"companyId":"1","userId":"1","name":"Test"}' -ContentType "application/json").id
+
+# 2. Upload script
+"Hello! AI calling." | Out-File script.txt
+Invoke-RestMethod "$API/campaigns/$c/script/upload" -Method POST -Form @{file=Get-Item script.txt}
+
+# 3. Upload contacts
+"firstName,lastName,phone`nJohn,Doe,+1234567890" | Out-File contacts.csv
+Invoke-RestMethod "$API/campaigns/$c/contacts/upload" -Method POST -Form @{file=Get-Item contacts.csv}
+
+# 4. Start!
+Invoke-RestMethod "$API/campaigns/$c/start" -Method POST -Body '{"concurrentCalls":1}' -ContentType "application/json"
+
+# 5. Check status
+Invoke-RestMethod "$API/campaigns/$c/status"
+```
+
+## 🧪 Test Everything
 
 ```powershell
-# Run the setup script
-.\setup-dataset-pipeline.ps1
+.\test-calling-mvp.ps1
 ```
 
-The script will:
-1. Stop all Node.js processes
-2. Generate Prisma client
-3. Run database migration
-4. Build backend
-5. Verify folder structure
-
----
-
-### Option B: Manual Setup
+## 🔧 Twilio Local Setup
 
 ```bash
-# Step 1: Stop all Node.js processes
-# Use Task Manager (Ctrl+Shift+Esc) or PowerShell:
-Get-Process node | Stop-Process -Force
+# Install ngrok
+npm install -g ngrok
 
-# Step 2: Generate Prisma client
-cd database
-npx prisma generate
+# Expose local server
+ngrok http 3001
 
-# Step 3: Run migration
-npx prisma migrate dev --name add_dataset_processing_pipeline
+# Update .env
+API_BASE_URL=https://YOUR-NGROK-URL.ngrok.io
 
-# Step 4: Build backend
-cd ..\apps\api
-npm run build
-
-# Step 5: Start servers
-npm run start:dev    # Terminal 1
-cd ..\web
-npm run dev          # Terminal 2
+# Configure Twilio webhooks to point to:
+https://YOUR-NGROK-URL.ngrok.io/api/v1/webhooks/twilio/call
+https://YOUR-NGROK-URL.ngrok.io/api/v1/webhooks/twilio/status
 ```
 
----
+## 📚 Full Docs
 
-## 🎯 Access the System
+- **Installation**: [INSTALL.md](./INSTALL.md)
+- **Setup Guide**: [CALLING_MVP_SETUP.md](./CALLING_MVP_SETUP.md)
+- **API Docs**: [API_DOCUMENTATION.md](./API_DOCUMENTATION.md)
+- **Complete Info**: [MVP_COMPLETE.md](./MVP_COMPLETE.md)
 
-After setup:
+## ✅ Success Check
 
-1. **Backend API:** http://localhost:3001
-2. **Frontend UI:** http://localhost:3000
-3. **API Docs:** http://localhost:3001/api/docs
-4. **Dataset Manager:** http://localhost:3000/dashboard/dataset-manager
+Your system works if you can:
+- ✅ Create campaign: `POST /campaigns`
+- ✅ Upload files: `POST /campaigns/:id/script/upload`
+- ✅ Start campaign: `POST /campaigns/:id/start`
+- ✅ See status: `GET /campaigns/:id/status`
+- ✅ Get analytics: `GET /campaigns/:id/analytics`
 
----
+## 🆘 Quick Fixes
 
-## 📋 Key Features
+**Port in use?**
+```env
+API_PORT=3002
+```
 
-### Upload Manager
-- Single file upload
-- Bulk upload
-- Drag & drop support
-- Duplicate detection (MD5 hash)
-- Progress tracking
-
-### Processing Pipeline (8 Stages)
-1. **Validation** - Audio quality checks
-2. **Transcription** - Speech-to-text (Faster Whisper)
-3. **Diarization** - Speaker separation
-4. **Conversation Parsing** - Structured conversation
-5. **Entity Extraction** - Extract budget, location, property, etc.
-6. **Intent Detection** - Detect customer intent
-7. **Lead Classification** - Hot/Warm/Cold scoring
-8. **PII Masking** - Protect sensitive data
-
-### Dashboard Statistics
-- Total files, processed, pending, failed
-- Languages detected (Hindi, English, Marathi)
-- Total audio duration
-- Storage used
-- Average noise level
-- Processing statistics by stage
-
-### Export Formats
-- JSON (structured)
-- JSONL (line-delimited)
-- CSV (tabular)
-- SQLite (database)
-
-Ready for Google Colab AI training.
-
----
-
-## 🔧 Quick API Tests
-
+**Database error?**
 ```bash
-# Get dashboard
-curl -H "Authorization: Bearer YOUR_TOKEN" \
-  http://localhost:3001/api/v1/dataset/dashboard
-
-# List datasets
-curl -H "Authorization: Bearer YOUR_TOKEN" \
-  http://localhost:3001/api/v1/dataset
-
-# Upload file
-curl -X POST \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -F "file=@recording.mp3" \
-  http://localhost:3001/api/v1/dataset/upload
-
-# Process full pipeline
-curl -X POST \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  http://localhost:3001/api/v1/dataset/{id}/process-all
+mysql -u root -p -e "CREATE DATABASE ai_calling_agent"
 ```
 
----
-
-## 📁 Folder Structure
-
-```
-Ai voice Dataset/
-├── raw_calls/              # Upload recordings here
-├── processed_audio/        # Processed audio files
-├── transcripts/            # Generated transcripts (.txt)
-├── diarization/            # Speaker diarization (.json)
-├── conversation_json/      # Structured conversations (.json)
-├── datasets/               # Prepared datasets
-├── exports/                # Export files (JSON, CSV, SQLite)
-├── logs/                   # Processing logs
-└── temp/                   # Temporary files
+**Module not found?**
+```bash
+npm install && cd apps/api && npm install
 ```
 
----
+**Twilio not working?**
+- Check ngrok is running
+- Verify webhook URLs in Twilio console
+- Check phone number format: +1234567890
 
-## 🐛 Troubleshooting
+## 🎯 URLs
 
-### Prisma Generation Fails
-**Error:** `EPERM: operation not permitted`  
-**Solution:** Stop all Node.js processes using Task Manager
+- **Web**: http://localhost:3000
+- **API**: http://localhost:3001
+- **API Docs**: http://localhost:3001/api/docs
+- **Health**: http://localhost:3001/api/v1/calling/health
 
-### Backend Build Fails
-**Error:** `Property does not exist on PrismaService`  
-**Solution:** Run `npx prisma generate` in database folder
+## 🎉 You're Ready!
 
-### Migration Fails
-**Error:** `Can't reach database server`  
-**Solution:** Check DATABASE_URL in .env file
-
-### Port Already in Use
-**Error:** `Port 3001 is already in use`  
-**Solution:** Stop existing server or change PORT in .env
-
----
-
-## 📚 Documentation
-
-- **Complete Documentation:** [PHASE_4.3.1_DATASET_PIPELINE_COMPLETE.md](./PHASE_4.3.1_DATASET_PIPELINE_COMPLETE.md)
-- **Detailed Setup Guide:** [PHASE_4.3.1_SETUP_GUIDE.md](./PHASE_4.3.1_SETUP_GUIDE.md)
-- **Phase 4.2 (Voice Studio):** [PHASE_4.2_VOICE_STUDIO_COMPLETE.md](./PHASE_4.2_VOICE_STUDIO_COMPLETE.md)
-
----
-
-## ✅ Success Checklist
-
-- [ ] Prisma client generated
-- [ ] Database migration applied
-- [ ] Backend compiles (0 errors)
-- [ ] Backend starts successfully
-- [ ] Frontend compiles (0 errors)
-- [ ] Frontend starts successfully
-- [ ] Can access Dataset Manager UI
-- [ ] Dashboard shows statistics
-- [ ] Can upload a test file
-- [ ] Jobs are created
-- [ ] Real-time updates work
-
----
-
-## 💡 Tips
-
-1. **Test with Small Files First**  
-   Upload 1-2 small audio files to test the pipeline before bulk processing.
-
-2. **Monitor Processing Logs**  
-   Check the logs tab in Dataset Manager to see detailed processing steps.
-
-3. **Use WebSocket for Real-time Updates**  
-   Connect to Socket.IO to see live progress updates.
-
-4. **Export Without PII**  
-   When exporting for AI training, set `includePII: false` to mask sensitive data.
-
-5. **Existing Recordings**  
-   Move files from `Ai voice Dataset/Recording/` to `raw_calls/` to process existing 600+ recordings.
-
----
-
-## 🆘 Need Help?
-
-1. Read [PHASE_4.3.1_SETUP_GUIDE.md](./PHASE_4.3.1_SETUP_GUIDE.md) for detailed instructions
-2. Check the troubleshooting section above
-3. Review console logs for specific errors
-4. Check Prisma Studio: `npx prisma studio`
-
----
-
-*Last Updated: July 19, 2026*  
-*Version: 1.0*  
-*Phase: 4.3.1 Quick Start*
+Start building AI-powered calling campaigns now! 🚀
