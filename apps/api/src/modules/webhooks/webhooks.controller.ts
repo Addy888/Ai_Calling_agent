@@ -85,7 +85,7 @@ export class WebhooksController {
       }
 
       return { success: true };
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Error handling Twilio status webhook: ${error.message}`);
       return { success: false };
     }
@@ -120,7 +120,7 @@ export class WebhooksController {
       // Return TwiML response
       res.type('text/xml');
       res.send(twiml);
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Error handling Twilio call webhook: ${error.message}`);
       
       // Return error TwiML
@@ -161,7 +161,7 @@ export class WebhooksController {
       // We just log it here for now
 
       return { success: true };
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Error handling Twilio recording webhook: ${error.message}`);
       return { success: false };
     }
@@ -203,7 +203,7 @@ export class WebhooksController {
           </Gather>
         </Response>
       `);
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Error handling Twilio speech webhook: ${error.message}`);
       
       res.type('text/xml');

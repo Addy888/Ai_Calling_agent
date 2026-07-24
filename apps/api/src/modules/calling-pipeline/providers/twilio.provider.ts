@@ -37,7 +37,8 @@ export class TwilioProvider implements TelephonyProvider {
     }
 
     try {
-      this.client = twilio(this.accountSid, this.authToken);
+      const twilioFactory = require('twilio');
+      this.client = twilioFactory(this.accountSid, this.authToken);
       this.logger.log('Twilio provider initialized successfully');
     } catch (error) {
       if (error instanceof Error) {

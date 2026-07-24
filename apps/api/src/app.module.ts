@@ -47,7 +47,10 @@ import { ConversationEngineModule } from './modules/conversation-engine/conversa
 import { CallOrchestratorModule } from './modules/call-orchestrator/call-orchestrator.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { CampaignApiModule } from './modules/campaign-api/campaign-api.module';
+import { TelephonyEngineModule } from './modules/telephony-engine/telephony-engine.module';
+import { ConversationRuntimeModule } from './modules/conversation-runtime/conversation-runtime.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { VoiceStreamingModule } from './modules/voice-streaming/voice-streaming.module';
 
 @Module({
   imports: [
@@ -102,6 +105,9 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
     CallOrchestratorModule,
     WebhooksModule,
     CampaignApiModule,
+    TelephonyEngineModule,
+    ConversationRuntimeModule,
+    VoiceStreamingModule,
   ],
   providers: [
     {

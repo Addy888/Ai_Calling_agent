@@ -10,6 +10,7 @@ import { AgentExecutionService } from './services/agent-execution.service';
 import { QueueExecutionService } from './services/queue-execution.service';
 import { CallSessionService } from './services/call-session.service';
 import { WorkflowManagerService } from './services/workflow-manager.service';
+import { CallOrchestratorService } from './services/call-orchestrator.service';
 
 // Import existing modules
 import { CampaignsModule } from '../campaigns/campaigns.module';
@@ -23,7 +24,7 @@ import { ScriptsModule } from '../scripts/scripts.module';
 import { CallsModule } from '../calls/calls.module';
 import { CompaniesModule } from '../companies/companies.module';
 import { VoiceProfilesModule } from '../voice-profiles/voice-profiles.module';
-import { PrismaModule } from '../prisma/prisma.module';
+import { PrismaModule } from '../../common/prisma/prisma.module';
 import { CallOrchestratorModule } from '../call-orchestrator/call-orchestrator.module';
 
 @Module({
@@ -45,6 +46,7 @@ import { CallOrchestratorModule } from '../call-orchestrator/call-orchestrator.m
   controllers: [CallingPipelineController],
   providers: [
     CallingPipelineService,
+    CallOrchestratorService,
     ConversationOrchestratorService,
     CampaignExecutionService,
     CallLifecycleService,

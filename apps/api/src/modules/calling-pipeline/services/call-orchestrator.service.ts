@@ -4,6 +4,7 @@ import { CallLifecycleService } from './call-lifecycle.service';
 import { CallSessionService } from './call-session.service';
 import { ConversationStateService } from './conversation-state.service';
 import { AgentExecutionService } from './agent-execution.service';
+import { ConversationOrchestratorService } from './conversation-orchestrator.service';
 import { WorkflowManagerService } from './workflow-manager.service';
 import { CallState, PipelineEvent } from '../enums/call-state.enum';
 import { CallStatusResponse } from '../dto/pipeline.dto';
@@ -22,6 +23,7 @@ export class CallOrchestratorService {
     private readonly callSession: CallSessionService,
     private readonly conversationState: ConversationStateService,
     private readonly agentExecution: AgentExecutionService,
+    private readonly conversationOrchestrator: ConversationOrchestratorService,
     private readonly workflowManager: WorkflowManagerService,
     private readonly eventEmitter: EventEmitter2,
   ) {
@@ -45,17 +47,10 @@ export class CallOrchestratorService {
 
     try {
       // Start call lifecycle
-      await this.callLifecycle.initiateCall({
-        sessionId,
-        contactId,
-        campaignId,
-        agentId,
-        phoneNumber,
-        context,
-      });
-
+      await this.callLifecycle.transitionState(sessionId, CallState.INITIALIZING);
+      
       // Emit call initiated event
-      this.eventEmitter.emit(PipelineEvent.CALL_INITIATED, {
+      this.eventEmitter.emit(PipelineEvent.CALL_STARTED, {
         sessionId,
         contactId,
         campaignId,
@@ -78,10 +73,10 @@ export class CallOrchestratorService {
     this.logger.log(`Ending call: ${sessionId}, reason: ${reason || 'normal'}`);
 
     try {
-      await this.callLifecycle.endCall(sessionId, reason);
+      await this.callLifecycle.transitionState(sessionId, CallState.ENDING, reason);
 
       // Emit call ended event
-      this.eventEmitter.emit(PipelineEvent.CALL_ENDED, {
+      this.eventEmitter.emit(PipelineEvent.CALL_COMPLETED, {
         sessionId,
         reason,
         timestamp: new Date(),
@@ -112,18 +107,14 @@ export class CallOrchestratorService {
       sessionId: session.id,
       contactId: session.contactId,
       campaignId: session.campaignId,
-      agentId: session.agentId,
       phoneNumber: session.phoneNumber,
       state: session.state,
-      conversationState: conversationData?.currentState,
       conversationTurns: session.conversationTurns,
       startedAt: session.startedAt,
       connectedAt: session.connectedAt,
       endedAt: session.endedAt,
       duration: session.duration,
-      recordingUrl: session.recordingUrl,
       callSid: session.callSid,
-      error: session.error,
     };
   }
 
@@ -163,7 +154,7 @@ export class CallOrchestratorService {
     await this.callSession.updateState(sessionId, state);
 
     // Emit state change event
-    this.eventEmitter.emit(PipelineEvent.CALL_STATE_CHANGED, {
+    this.eventEmitter.emit(PipelineEvent.TRANSCRIPT_UPDATED, {
       sessionId,
       state,
       timestamp: new Date(),
@@ -209,7 +200,7 @@ export class CallOrchestratorService {
       await this.updateCallState(sessionId, CallState.CONNECTED);
 
       // Start conversation
-      await this.agentExecution.startConversation(sessionId);
+      await this.conversationOrchestrator.startConversation(sessionId);
 
       this.logger.log(`Call connected and conversation started: ${sessionId}`);
     } catch (error) {
@@ -245,7 +236,7 @@ export class CallOrchestratorService {
       await this.callSession.addTranscriptTurn(sessionId, 'customer', text);
 
       // Process through AI agent
-      await this.agentExecution.processCustomerInput(sessionId, text, confidence);
+      await this.conversationOrchestrator.processCustomerInput(sessionId, text);
 
       this.logger.log(`Customer speech processed: ${sessionId}`);
     } catch (error) {

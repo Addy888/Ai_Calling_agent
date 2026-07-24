@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as twilio from 'twilio';
+import { Twilio } from 'twilio';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const twilioFactory = require('twilio');
 import {
   ITeflehonyProvider,
   CallOptions,
@@ -15,7 +17,7 @@ import {
 @Injectable()
 export class TwilioProvider implements ITeflehonyProvider {
   private readonly logger = new Logger(TwilioProvider.name);
-  private client: twilio.Twilio;
+  private client: Twilio;
   private twilioNumber: string;
   private authToken: string;
 
@@ -26,7 +28,7 @@ export class TwilioProvider implements ITeflehonyProvider {
     this.authToken = authToken;
 
     if (accountSid && authToken) {
-      this.client = twilio(accountSid, authToken);
+      this.client = twilioFactory(accountSid, authToken);
       this.logger.log('Twilio provider initialized');
     } else {
       this.logger.warn('Twilio credentials not configured');
@@ -106,7 +108,8 @@ export class TwilioProvider implements ITeflehonyProvider {
   }
 
   generateCallFlow(websocketUrl: string, metadata?: Record<string, any>): string {
-    const VoiceResponse = twilio.twiml.VoiceResponse;
+    const twilioFactory = require('twilio');
+    const VoiceResponse = twilioFactory.twiml.VoiceResponse;
     const response = new VoiceResponse();
 
     // Connect to WebSocket for bidirectional streaming
@@ -182,7 +185,8 @@ export class TwilioProvider implements ITeflehonyProvider {
 
   validateWebhookSignature(signature: string, url: string, params: any): boolean {
     try {
-      return twilio.validateRequest(
+      const twilioFactory = require('twilio');
+      return twilioFactory.validateRequest(
         this.authToken,
         signature,
         url,

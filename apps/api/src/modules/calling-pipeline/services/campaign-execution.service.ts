@@ -3,7 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { QueueExecutionService } from './queue-execution.service';
 import { CampaignState, PipelineEvent } from '../enums/call-state.enum';
 import { CampaignStatusResponse } from '../dto/pipeline.dto';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../../../common/prisma/prisma.service';
 
 /**
  * Campaign Execution Service

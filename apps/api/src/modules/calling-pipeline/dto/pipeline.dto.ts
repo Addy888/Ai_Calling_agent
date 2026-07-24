@@ -212,7 +212,17 @@ export class CallStatusResponse {
 
   @ApiPropertyOptional({ description: 'Current context' })
   context?: Record<string, any>;
+
+  @ApiPropertyOptional({ description: 'Recording URL' })
+  recordingUrl?: string;
+
+  @ApiPropertyOptional({ description: 'Call SID' })
+  callSid?: string;
+
+  @ApiPropertyOptional({ description: 'Error message' })
+  error?: string;
 }
+
 
 /**
  * Active Calls Response

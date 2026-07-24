@@ -38,13 +38,13 @@ export class SpeechRuntimeManager {
     const register = (event: SpeechEventType, handler?: (payload: unknown) => void) => {
       if (!handler) return;
 
-      const filterHandler = (payload: { sessionId?: string } & Record<string, unknown>) => {
+      const filterHandler = (payload: any) => {
         if (payload?.sessionId !== sessionId) return;
         handler(payload);
       };
 
       this.eventEmitter.on(event, filterHandler);
-      listeners.push({ event, handler: filterHandler });
+      listeners.push({ event, handler: filterHandler as any });
     };
 
     register(SpeechEventType.SPEECH_STARTED, callbacks.onSpeechStarted);

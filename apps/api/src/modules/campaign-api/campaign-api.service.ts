@@ -1,5 +1,5 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../../common/prisma/prisma.service';
 import { CampaignExecutionService } from '../calling-pipeline/services/campaign-execution.service';
 import { CallOrchestratorService } from '../call-orchestrator/call-orchestrator.service';
 import * as XLSX from 'xlsx';

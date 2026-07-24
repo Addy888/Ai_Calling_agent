@@ -53,38 +53,38 @@ export class PipelineIntegrationService {
         onSpeechStarted: (payload) => {
           this.eventEmitter.emit('call.speech.started', {
             callSessionId,
-            ...payload,
+            ...(payload as Record<string, unknown>),
           });
         },
         onSpeechEnded: (payload) => {
           this.eventEmitter.emit('call.speech.ended', {
             callSessionId,
-            ...payload,
+            ...(payload as Record<string, unknown>),
           });
         },
         onPartialTranscript: (payload) => {
           this.eventEmitter.emit('call.partial.transcript', {
             callSessionId,
-            ...payload,
+            ...(payload as Record<string, unknown>),
           });
         },
         onFinalTranscript: (payload) => {
           // Forward to conversation engine for processing
           this.eventEmitter.emit('call.final.transcript', {
             callSessionId,
-            ...payload,
+            ...(payload as Record<string, unknown>),
           });
         },
         onSilenceDetected: (payload) => {
           this.eventEmitter.emit('call.silence.detected', {
             callSessionId,
-            ...payload,
+            ...(payload as Record<string, unknown>),
           });
         },
         onLanguageDetected: (payload) => {
           this.eventEmitter.emit('call.language.detected', {
             callSessionId,
-            ...payload,
+            ...(payload as Record<string, unknown>),
           });
         },
       });

@@ -17,6 +17,29 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { CampaignApiService } from './campaign-api.service';
 
+// DTOs
+
+export class CreateCampaignDto {
+  companyId: string;
+  userId: string;
+  name: string;
+  description?: string;
+  scriptId?: string;
+  voiceId?: string;
+  promptId?: string;
+  settings?: any;
+}
+
+export class UpdateCampaignDto {
+  name?: string;
+  description?: string;
+  scriptId?: string;
+  voiceId?: string;
+  promptId?: string;
+  status?: string;
+  settings?: any;
+}
+
 /**
  * Campaign API Controller
  * Complete campaign management including creation, execution, and monitoring
@@ -236,25 +259,4 @@ export class CampaignApiController {
   }
 }
 
-// DTOs
 
-export class CreateCampaignDto {
-  companyId: string;
-  userId: string;
-  name: string;
-  description?: string;
-  scriptId?: string;
-  voiceId?: string;
-  promptId?: string;
-  settings?: any;
-}
-
-export class UpdateCampaignDto {
-  name?: string;
-  description?: string;
-  scriptId?: string;
-  voiceId?: string;
-  promptId?: string;
-  status?: string;
-  settings?: any;
-}

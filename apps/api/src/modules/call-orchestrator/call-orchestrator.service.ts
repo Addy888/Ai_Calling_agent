@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../../common/prisma/prisma.service';
 import { TelephonyService } from '../telephony/telephony.service';
 import { ConversationEngineService } from '../conversation-engine/conversation-engine.service';
 import * as fs from 'fs/promises';

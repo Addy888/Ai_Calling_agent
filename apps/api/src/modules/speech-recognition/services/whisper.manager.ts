@@ -52,7 +52,12 @@ class FasterWhisperProvider implements STTProvider {
         throw new Error(`Whisper service error: ${response.status} - ${errorText}`);
       }
 
-      const result = await response.json();
+      const result = await response.json() as {
+        text?: string;
+        confidence?: number;
+        language?: string;
+        words?: Array<{ word: string; start: number; end: number; confidence: number }>;
+      };
 
       return {
         text: result.text || '',
@@ -89,7 +94,7 @@ class FasterWhisperProvider implements STTProvider {
         return false;
       }
       
-      const health = await response.json();
+      const health = await response.json() as { status?: string };
       return health.status === 'healthy';
       
     } catch (error) {

@@ -142,7 +142,7 @@ export class ElevenLabsProvider implements TTSProvider {
         throw new Error(`Failed to fetch voices: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const data = await response.json() as { voices: Array<any> };
 
       return data.voices.map((voice: any) => ({
         id: voice.voice_id,
