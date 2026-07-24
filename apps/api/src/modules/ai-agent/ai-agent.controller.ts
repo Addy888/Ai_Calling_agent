@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -77,6 +78,7 @@ export class AIAgentController {
   }
 
   @Put(':id')
+  @Patch(':id')
   @ApiOperation({ summary: 'Update agent' })
   @ApiResponse({ status: 200, description: 'Agent updated successfully' })
   async updateAgent(@Request() req, @Param('id') id: string, @Body() dto: UpdateAIAgentDto) {

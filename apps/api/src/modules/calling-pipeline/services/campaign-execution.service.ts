@@ -376,13 +376,31 @@ export class CampaignExecutionService {
         throw new NotFoundException(`Campaign not found: ${campaignId}`);
       }
 
+      // Load associated AI Agent
+      const agent = await this.prisma.aIAgent.findFirst({
+        where: { campaignId, isEnabled: true },
+      });
+
+      let scriptId = agent?.scriptId || campaign.scriptId;
+      let scriptContent = campaign.script?.content;
+
+      if (agent?.scriptId && agent.scriptId !== campaign.scriptId) {
+        const script = await this.prisma.script.findUnique({
+          where: { id: agent.scriptId },
+        });
+        if (script) {
+          scriptContent = script.content;
+        }
+      }
+
       return {
         id: campaign.id,
         name: campaign.name,
-        scriptId: campaign.scriptId,
-        scriptContent: campaign.script?.content,
+        agentId: agent?.id,
+        scriptId,
+        scriptContent,
         voiceId: campaign.voiceId,
-        promptId: campaign.promptId,
+        promptId: agent?.promptId || campaign.promptId,
         settings: campaign.settings,
       };
     } catch (error) {
