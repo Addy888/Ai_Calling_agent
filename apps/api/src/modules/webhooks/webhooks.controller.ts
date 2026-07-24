@@ -12,13 +12,15 @@ import { Response } from 'express';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { TelephonyService } from '../telephony/telephony.service';
 import { CallOrchestratorService } from '../call-orchestrator/call-orchestrator.service';
+import { Public } from '../../common/decorators/public.decorator';
 
 /**
  * Webhooks Controller
- * Handles webhooks from telephony providers
+ * Handles webhooks from telephony providers — all endpoints are PUBLIC (no JWT required)
  */
 @ApiTags('Webhooks')
 @Controller('webhooks')
+@Public()
 export class WebhooksController {
   private readonly logger = new Logger(WebhooksController.name);
 
@@ -26,6 +28,7 @@ export class WebhooksController {
     private readonly telephony: TelephonyService,
     private readonly callOrchestrator: CallOrchestratorService,
   ) {}
+
 
   /**
    * Twilio Call Status Webhook
@@ -42,31 +45,41 @@ export class WebhooksController {
     try {
       // Parse webhook data
       const webhookData = this.telephony.parseWebhook(body);
-      const callId = body.CallId || webhookData.metadata?.callId;
+
+      // Resolve internal callId from Twilio CallSid
+      const callSid = body.CallSid || webhookData.callSid;
+      const callId = this.callOrchestrator.getCallIdBySid(callSid) || body.CallId;
+
+      if (!callId && !['initiated', 'ringing'].includes(webhookData.status)) {
+        this.logger.warn(`Cannot resolve callId for CallSid: ${callSid}, status: ${webhookData.status}`);
+        return { success: true };
+      }
 
       // Handle different call statuses
       switch (webhookData.status) {
         case 'initiated':
-          this.logger.log(`Call initiated: ${callId}`);
+          this.logger.log(`Call initiated: SID=${callSid}`);
           break;
 
         case 'ringing':
-          this.logger.log(`Call ringing: ${callId}`);
+          this.logger.log(`Call ringing: SID=${callSid}`);
           break;
 
         case 'answered':
         case 'in-progress':
           this.logger.log(`Call answered: ${callId}`);
-          await this.callOrchestrator.handleCallConnected(callId);
+          if (callId) await this.callOrchestrator.handleCallConnected(callId);
           break;
 
         case 'completed':
           this.logger.log(`Call completed: ${callId}`);
-          await this.callOrchestrator.handleCallEnded(
-            callId,
-            webhookData.duration || 0,
-            webhookData.recordingUrl,
-          );
+          if (callId) {
+            await this.callOrchestrator.handleCallEnded(
+              callId,
+              webhookData.duration || 0,
+              webhookData.recordingUrl,
+            );
+          }
           break;
 
         case 'busy':
@@ -74,10 +87,12 @@ export class WebhooksController {
         case 'failed':
         case 'canceled':
           this.logger.log(`Call failed: ${callId}, status: ${webhookData.status}`);
-          await this.callOrchestrator.handleCallFailed(
-            callId,
-            webhookData.errorMessage || webhookData.status,
-          );
+          if (callId) {
+            await this.callOrchestrator.handleCallFailed(
+              callId,
+              webhookData.errorMessage || webhookData.status,
+            );
+          }
           break;
 
         default:
@@ -90,6 +105,7 @@ export class WebhooksController {
       return { success: false };
     }
   }
+
 
   /**
    * Twilio Call Webhook (TwiML response)

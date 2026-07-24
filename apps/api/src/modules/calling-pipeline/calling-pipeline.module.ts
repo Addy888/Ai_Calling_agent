@@ -62,6 +62,8 @@ import { CallOrchestratorModule } from '../call-orchestrator/call-orchestrator.m
     ConversationOrchestratorService,
     CampaignExecutionService,
     QueueExecutionService,
+    CallSessionService,
+    CallOrchestratorService,
   ],
 })
 export class CallingPipelineModule {}

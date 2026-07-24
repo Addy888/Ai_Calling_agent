@@ -6,7 +6,6 @@ import {
   Body,
   Param,
   Query,
-  UseGuards,
   HttpCode,
   HttpStatus,
   UploadedFile,
@@ -16,6 +15,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { CampaignApiService } from './campaign-api.service';
+import { Public } from '../../common/decorators/public.decorator';
 
 // DTOs
 
@@ -43,11 +43,12 @@ export class UpdateCampaignDto {
 /**
  * Campaign API Controller
  * Complete campaign management including creation, execution, and monitoring
+ * @Public() — authentication disabled for demo; re-enable JWT guard for production
  */
 @ApiTags('Campaign Management')
 @Controller('campaigns')
 @ApiBearerAuth()
-// @UseGuards(JwtAuthGuard) // Uncomment when auth is ready
+@Public()
 export class CampaignApiController {
   constructor(private readonly campaignService: CampaignApiService) {}
 

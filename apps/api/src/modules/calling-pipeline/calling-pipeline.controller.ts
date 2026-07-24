@@ -25,6 +25,8 @@ import {
   PipelineStatusResponse,
 } from './dto/pipeline.dto';
 
+import { Public } from '../../common/decorators/public.decorator';
+
 /**
  * AI Calling Pipeline Controller
  * REST API endpoints for managing AI calling campaigns and calls
@@ -32,7 +34,7 @@ import {
 @ApiTags('Calling Pipeline')
 @Controller('calling')
 @ApiBearerAuth()
-// @UseGuards(JwtAuthGuard) // Uncomment when auth is ready
+@Public()
 export class CallingPipelineController {
   constructor(private readonly pipelineService: CallingPipelineService) {}
 

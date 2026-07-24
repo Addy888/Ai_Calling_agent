@@ -224,11 +224,14 @@ export class CampaignExecutionService {
         await this.queueExecution.queueCall({
           contactId: contact.id,
           campaignId: execution.campaignId,
-          agentId: execution.campaignData.agentId,
-          phoneNumber: contact.phoneNumber,
+          agentId: execution.campaignData.agentId || execution.campaignId, // fallback to campaignId if no agentId
+          phoneNumber: contact.phone, // DB field is 'phone', not 'phoneNumber'
           context: {
             executionId,
+            companyId: execution.companyId,
             contactData: contact,
+            scriptContent: execution.campaignData.scriptContent,
+            voiceId: execution.campaignData.voiceId,
           },
         });
 

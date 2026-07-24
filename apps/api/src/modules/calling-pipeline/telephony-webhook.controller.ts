@@ -2,13 +2,16 @@ import { Controller, Post, Body, Param, Logger, Res, HttpCode } from '@nestjs/co
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { Response } from 'express';
 import { CallOrchestratorService } from './services/call-orchestrator.service';
+import { Public } from '../../common/decorators/public.decorator';
 
 /**
  * Telephony Webhook Controller
  * Handles webhooks from telephony providers (Twilio, Exotel, etc.)
+ * All endpoints are @Public — no JWT required for provider callbacks
  */
 @ApiTags('Telephony Webhooks')
 @Controller('webhooks/telephony')
+@Public()
 export class TelephonyWebhookController {
   private readonly logger = new Logger(TelephonyWebhookController.name);
 

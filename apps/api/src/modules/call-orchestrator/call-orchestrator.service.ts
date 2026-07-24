@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { TelephonyService } from '../telephony/telephony.service';
@@ -11,9 +11,11 @@ import * as path from 'path';
  * Orchestrates the complete call lifecycle
  */
 @Injectable()
-export class CallOrchestratorService {
+export class CallOrchestratorService implements OnModuleInit {
   private readonly logger = new Logger(CallOrchestratorService.name);
   private activeCalls: Map<string, CallSession> = new Map();
+  /** Maps Twilio CallSid → internal callId for webhook lookups */
+  private callSidToCallId: Map<string, string> = new Map();
   private readonly storageBasePath: string;
 
   constructor(
@@ -23,7 +25,17 @@ export class CallOrchestratorService {
     private readonly eventEmitter: EventEmitter2,
   ) {
     this.storageBasePath = process.env.STORAGE_PATH || './storage';
-    this.ensureStorageDirectories();
+  }
+
+  async onModuleInit(): Promise<void> {
+    await this.ensureStorageDirectories();
+  }
+
+  /**
+   * Resolve an internal callId from a Twilio CallSid
+   */
+  getCallIdBySid(callSid: string): string | undefined {
+    return this.callSidToCallId.get(callSid);
   }
 
   /**
@@ -106,6 +118,11 @@ export class CallOrchestratorService {
       // Update session with call SID
       session.callSid = result.callSid;
       session.status = 'CALLING';
+
+      // Register callSid → callId mapping for webhook lookups
+      if (result.callSid) {
+        this.callSidToCallId.set(result.callSid, call.id);
+      }
 
       // Update call record
       await this.prisma.call.update({
