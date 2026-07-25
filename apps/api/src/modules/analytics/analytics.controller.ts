@@ -31,6 +31,17 @@ export class AnalyticsController {
     return this.analyticsService.createAnalytic(user.companyId, createAnalyticsDto);
   }
 
+  @Get('dashboard/stats')
+  @ApiOperation({ summary: 'Get dashboard statistics with call metrics' })
+  @ApiResponse({ status: 200, description: 'Dashboard statistics retrieved successfully' })
+  @Permissions('analytics.read')
+  async getDashboardStatsWithCalls(
+    @CurrentUser() user: any,
+    @Query() filters: DashboardStatsDto,
+  ) {
+    return this.analyticsService.getDashboardStatsWithCalls(user.companyId, filters);
+  }
+
   @Get('dashboard')
   @ApiOperation({ summary: 'Get dashboard statistics' })
   @ApiResponse({ status: 200, description: 'Dashboard statistics retrieved successfully' })

@@ -216,59 +216,106 @@ export class ContactsService {
           results.push(row);
         })
         .on('end', async () => {
+          console.log(`📊 [CSV IMPORT] Starting import: ${results.length} rows`);
+
           for (let i = 0; i < results.length; i++) {
             const row = results[i];
+            
+            console.log(`📋 [CSV IMPORT] Row ${i + 1} - Raw data:`, row);
+
             try {
-              if (!row.firstName || !row.lastName || !row.phone) {
-                errors.push({ row: i + 1, error: 'Missing required fields (firstName, lastName, phone)' });
+              // Map common column name variations
+              const mappedRow = this.mapExcelColumns(row);
+              
+              console.log(`🔄 [CSV IMPORT] Row ${i + 1} - Mapped data:`, mappedRow);
+
+              // Validate required fields
+              const missingFields: string[] = [];
+              
+              // Phone is required
+              if (!mappedRow.phone) {
+                missingFields.push('phone');
+              }
+
+              // At least name OR (firstName + lastName) is required
+              if (!mappedRow.firstName && !mappedRow.lastName && !mappedRow.name) {
+                missingFields.push('name or firstName/lastName');
+              }
+
+              if (missingFields.length > 0) {
+                const errorMsg = `Missing required field(s): ${missingFields.join(', ')}`;
+                console.log(`❌ [CSV IMPORT] Row ${i + 1} - ${errorMsg}`);
+                errors.push({ row: i + 1, error: errorMsg });
                 invalid++;
                 continue;
               }
 
+              // Split full name if provided
+              let firstName = mappedRow.firstName || '';
+              let lastName = mappedRow.lastName || '';
+              
+              if (mappedRow.name && !firstName && !lastName) {
+                const nameParts = String(mappedRow.name).trim().split(/\s+/);
+                firstName = nameParts[0] || '';
+                lastName = nameParts.slice(1).join(' ') || '';
+              }
+
+              // Normalize phone number
+              const phone = String(mappedRow.phone).trim();
+
+              // Check for duplicate phone
               const existingPhone = await this.prisma.contact.findFirst({
-                where: { companyId, phone: row.phone, deletedAt: null },
+                where: { companyId, phone, deletedAt: null },
               });
 
               if (existingPhone) {
+                console.log(`⚠️ [CSV IMPORT] Row ${i + 1} - Duplicate phone: ${phone}`);
                 errors.push({ row: i + 1, error: 'Duplicate phone number' });
                 duplicates++;
                 continue;
               }
 
-              if (row.email) {
+              // Check for duplicate email if provided
+              if (mappedRow.email) {
                 const existingEmail = await this.prisma.contact.findFirst({
-                  where: { companyId, email: row.email, deletedAt: null },
+                  where: { companyId, email: mappedRow.email, deletedAt: null },
                 });
                 if (existingEmail) {
+                  console.log(`⚠️ [CSV IMPORT] Row ${i + 1} - Duplicate email: ${mappedRow.email}`);
                   errors.push({ row: i + 1, error: 'Duplicate email address' });
                   duplicates++;
                   continue;
                 }
               }
 
+              // Create contact
               await this.prisma.contact.create({
                 data: {
                   companyId,
-                  firstName: row.firstName,
-                  lastName: row.lastName,
-                  fullName: `${row.firstName} ${row.lastName}`.trim(),
-                  email: row.email || null,
-                  phone: row.phone,
-                  countryCode: row.countryCode || '+1',
-                  language: row.language || 'en',
-                  company: row.company || null,
-                  designation: row.designation || null,
-                  tags: row.tags ? row.tags.split(',') : [],
-                  notes: row.notes || null,
+                  firstName,
+                  lastName,
+                  fullName: mappedRow.fullName || `${firstName} ${lastName}`.trim() || phone,
+                  email: mappedRow.email || null,
+                  phone,
+                  countryCode: mappedRow.countryCode || '+91',
+                  language: mappedRow.language || 'en',
+                  company: mappedRow.company || null,
+                  designation: mappedRow.designation || null,
+                  tags: mappedRow.tags ? String(mappedRow.tags).split(',') : [],
+                  notes: mappedRow.notes || null,
                 },
               });
 
+              console.log(`✅ [CSV IMPORT] Row ${i + 1} - Imported: ${firstName} ${lastName} (${phone})`);
               imported++;
             } catch (error: any) {
+              console.log(`❌ [CSV IMPORT] Row ${i + 1} - Error:`, error.message, error.stack);
               errors.push({ row: i + 1, error: error.message || 'Unknown error' });
               invalid++;
             }
           }
+
+          console.log(`📊 [CSV IMPORT] Complete: ${imported} imported, ${duplicates} duplicates, ${invalid} invalid`);
 
           resolve({
             success: true,
@@ -284,6 +331,7 @@ export class ContactsService {
           });
         })
         .on('error', (error) => {
+          console.error('❌ [CSV IMPORT] Failed to parse CSV file:', error);
           reject(new BadRequestException('Failed to parse CSV file'));
         });
     });
@@ -301,48 +349,93 @@ export class ContactsService {
       let duplicates = 0;
       let invalid = 0;
 
+      console.log(`📊 [EXCEL IMPORT] Starting import: ${data.length} rows`);
+
       for (let i = 0; i < data.length; i++) {
         const row: any = data[i];
+        
+        console.log(`📋 [EXCEL IMPORT] Row ${i + 1} - Raw data:`, row);
+
         try {
-          if (!row.firstName || !row.lastName || !row.phone) {
-            errors.push({ row: i + 1, error: 'Missing required fields' });
+          // Map common column name variations to standard fields
+          const mappedRow = this.mapExcelColumns(row);
+          
+          console.log(`🔄 [EXCEL IMPORT] Row ${i + 1} - Mapped data:`, mappedRow);
+
+          // Validate required fields
+          const missingFields: string[] = [];
+          
+          // Phone is required
+          if (!mappedRow.phone) {
+            missingFields.push('phone');
+          }
+
+          // At least name OR (firstName + lastName) is required
+          if (!mappedRow.firstName && !mappedRow.lastName && !mappedRow.name) {
+            missingFields.push('name or firstName/lastName');
+          }
+
+          if (missingFields.length > 0) {
+            const errorMsg = `Missing required field(s): ${missingFields.join(', ')}`;
+            console.log(`❌ [EXCEL IMPORT] Row ${i + 1} - ${errorMsg}`);
+            errors.push({ row: i + 1, error: errorMsg });
             invalid++;
             continue;
           }
 
+          // Split full name if provided
+          let firstName = mappedRow.firstName || '';
+          let lastName = mappedRow.lastName || '';
+          
+          if (mappedRow.name && !firstName && !lastName) {
+            const nameParts = String(mappedRow.name).trim().split(/\s+/);
+            firstName = nameParts[0] || '';
+            lastName = nameParts.slice(1).join(' ') || '';
+          }
+
+          // Normalize phone number
+          const phone = String(mappedRow.phone).trim();
+
+          // Check for duplicate phone
           const existingPhone = await this.prisma.contact.findFirst({
-            where: { companyId, phone: String(row.phone), deletedAt: null },
+            where: { companyId, phone, deletedAt: null },
           });
 
           if (existingPhone) {
+            console.log(`⚠️ [EXCEL IMPORT] Row ${i + 1} - Duplicate phone: ${phone}`);
             errors.push({ row: i + 1, error: 'Duplicate phone number' });
             duplicates++;
             continue;
           }
 
+          // Create contact
           await this.prisma.contact.create({
             data: {
               companyId,
-              firstName: row.firstName,
-              lastName: row.lastName,
-              fullName: `${row.firstName} ${row.lastName}`.trim(),
-              email: row.email || null,
-              phone: String(row.phone),
-              countryCode: row.countryCode || '+1',
-              language: row.language || 'en',
-              company: row.company || null,
-              designation: row.designation || null,
-              tags: row.tags ? String(row.tags).split(',') : [],
-              notes: row.notes || null,
+              firstName,
+              lastName,
+              fullName: mappedRow.fullName || `${firstName} ${lastName}`.trim() || phone,
+              email: mappedRow.email || null,
+              phone,
+              countryCode: mappedRow.countryCode || '+91',
+              language: mappedRow.language || 'en',
+              company: mappedRow.company || null,
+              designation: mappedRow.designation || null,
+              tags: mappedRow.tags ? String(mappedRow.tags).split(',') : [],
+              notes: mappedRow.notes || null,
             },
           });
 
+          console.log(`✅ [EXCEL IMPORT] Row ${i + 1} - Imported: ${firstName} ${lastName} (${phone})`);
           imported++;
         } catch (error: any) {
+          console.log(`❌ [EXCEL IMPORT] Row ${i + 1} - Error:`, error.message, error.stack);
           errors.push({ row: i + 1, error: error.message || 'Unknown error' });
           invalid++;
         }
       }
+
+      console.log(`📊 [EXCEL IMPORT] Complete: ${imported} imported, ${duplicates} duplicates, ${invalid} invalid`);
 
       return {
         success: true,
@@ -357,8 +450,133 @@ export class ContactsService {
         message: `Import completed: ${imported} imported, ${duplicates} duplicates, ${invalid} invalid`,
       };
     } catch (error) {
+      console.error('❌ [EXCEL IMPORT] Failed to parse Excel file:', error);
       throw new BadRequestException('Failed to parse Excel file');
     }
+  }
+
+  /**
+   * Map common Excel column name variations to standard field names
+   */
+  private mapExcelColumns(row: any): any {
+    const mapped: any = {};
+
+    // Map name variations (full name)
+    mapped.name = 
+      row.name || 
+      row.Name || 
+      row.NAME || 
+      row['Full Name'] || 
+      row['full name'] || 
+      row.fullName || 
+      row['Contact Name'] || 
+      row['contact name'] ||
+      row.contactName ||
+      null;
+
+    // Map firstName variations
+    mapped.firstName = 
+      row.firstName || 
+      row.FirstName || 
+      row.first_name || 
+      row['First Name'] || 
+      row.firstname ||
+      null;
+
+    // Map lastName variations
+    mapped.lastName = 
+      row.lastName || 
+      row.LastName || 
+      row.last_name || 
+      row['Last Name'] || 
+      row.lastname ||
+      null;
+
+    // Map fullName variations
+    mapped.fullName = 
+      row.fullName || 
+      row.FullName || 
+      row['Full Name'] || 
+      row.full_name ||
+      null;
+
+    // Map phone variations
+    mapped.phone = 
+      row.phone || 
+      row.Phone || 
+      row.PHONE || 
+      row.phoneNumber || 
+      row.PhoneNumber || 
+      row['Phone Number'] || 
+      row.phone_number ||
+      row.mobile || 
+      row.Mobile || 
+      row.mobileNumber || 
+      row.MobileNumber || 
+      row['Mobile Number'] ||
+      row.contact ||
+      row.Contact ||
+      null;
+
+    // Map email variations
+    mapped.email = 
+      row.email || 
+      row.Email || 
+      row.EMAIL || 
+      row['Email Address'] || 
+      row.email_address ||
+      null;
+
+    // Map language variations
+    mapped.language = 
+      row.language || 
+      row.Language || 
+      row.lang ||
+      null;
+
+    // Map company variations
+    mapped.company = 
+      row.company || 
+      row.Company || 
+      row.organization || 
+      row.Organization ||
+      null;
+
+    // Map designation variations
+    mapped.designation = 
+      row.designation || 
+      row.Designation || 
+      row.title || 
+      row.Title || 
+      row.position || 
+      row.Position ||
+      null;
+
+    // Map countryCode variations
+    mapped.countryCode = 
+      row.countryCode || 
+      row.CountryCode || 
+      row['Country Code'] || 
+      row.country_code ||
+      null;
+
+    // Map tags variations
+    mapped.tags = 
+      row.tags || 
+      row.Tags || 
+      row.TAGS ||
+      null;
+
+    // Map notes variations
+    mapped.notes = 
+      row.notes || 
+      row.Notes || 
+      row.NOTES || 
+      row.comments || 
+      row.Comments ||
+      null;
+
+    return mapped;
   }
 
   async bulkDelete(companyId: string, contactIds: string[]) {

@@ -185,4 +185,21 @@ export class CampaignController {
   getStatistics(@Param('id') id: string) {
     return this.campaignService.getCampaignStatistics(id);
   }
+
+  @Get(':id/contacts')
+  @ApiOperation({ summary: 'Get contacts assigned to campaign with pagination' })
+  @ApiParam({ name: 'id', description: 'Campaign ID' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  getContacts(
+    @Param('id') id: string,
+    @CurrentUser('companyId') companyId: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.campaignService.getContacts(id, companyId, {
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 50,
+    });
+  }
 }

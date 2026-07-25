@@ -289,6 +289,23 @@ export class CampaignApiService {
       throw new NotFoundException(`Campaign not found: ${campaignId}`);
     }
 
+    // Validate assigned contacts (must be ACTIVE and not deleted)
+    const activeContactsCount = await this.prisma.contact.count({
+      where: {
+        campaignId,
+        status: 'ACTIVE',
+        deletedAt: null,
+      },
+    });
+
+    if (activeContactsCount === 0) {
+      throw new BadRequestException(
+        'This campaign has no assigned contacts. Please assign contacts before starting the campaign.',
+      );
+    }
+
+    this.logger.log(`Campaign ${campaignId} has ${activeContactsCount} active contacts ready for calling`);
+
     if (campaign._count.contacts === 0) {
       throw new BadRequestException('Campaign has no contacts');
     }

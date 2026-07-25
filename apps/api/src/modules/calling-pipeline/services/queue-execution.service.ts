@@ -36,7 +36,10 @@ export class QueueExecutionService {
     priority?: number;
     scheduledTime?: Date;
   }): Promise<QueuedCall> {
-    this.logger.log(`Queuing call for contact: ${params.contactId}`);
+    this.logger.log(`🟢 [QUEUE] ===============================================`);
+    this.logger.log(`🟢 [QUEUE] Queuing call for contact: ${params.contactId}`);
+    this.logger.log(`🟢 [QUEUE] Phone: ${params.phoneNumber}`);
+    this.logger.log(`🟢 [QUEUE] Campaign: ${params.campaignId}`);
 
     const callId = this.generateCallId();
     const sessionId = this.generateSessionId();
@@ -68,7 +71,11 @@ export class QueueExecutionService {
     }
     campaignQueue.add(callId);
 
-    this.logger.log(`Call queued: ${callId} for session: ${sessionId}`);
+    this.logger.log(`🟢 [QUEUE] ✅ Call queued: ${callId}`);
+    this.logger.log(`🟢 [QUEUE] Session ID: ${sessionId}`);
+    this.logger.log(`🟢 [QUEUE] Queue size: ${this.callQueue.size}`);
+    this.logger.log(`🟢 [QUEUE] Campaign queue size: ${campaignQueue.size}`);
+    this.logger.log(`🟢 [QUEUE] ===============================================`);
 
     return queuedCall;
   }
@@ -117,13 +124,18 @@ export class QueueExecutionService {
       return;
     }
 
-    this.logger.log(`Processing queued call: ${call.callId}`);
+    this.logger.log(`🟡 [QUEUE PROCESSOR] ==========================================`);
+    this.logger.log(`🟡 [QUEUE PROCESSOR] Processing queued call: ${call.callId}`);
+    this.logger.log(`🟡 [QUEUE PROCESSOR] Contact: ${call.contactId}`);
+    this.logger.log(`🟡 [QUEUE PROCESSOR] Phone: ${call.phoneNumber}`);
 
     // Mark as processing
     this.processing.add(call.callId);
     call.status = 'processing';
 
     try {
+      this.logger.log(`🟡 [QUEUE PROCESSOR] Calling CallOrchestrator.initiateCall()...`);
+      
       // Initialize call through orchestrator
       const result = await this.callOrchestrator.initiateCall({
         campaignId: call.campaignId,
@@ -133,6 +145,9 @@ export class QueueExecutionService {
         voiceId: call.context?.voiceId,
         metadata: call.context,
       });
+      
+      this.logger.log(`🟡 [QUEUE PROCESSOR] ✅ Call initiated successfully!`);
+      this.logger.log(`🟡 [QUEUE PROCESSOR] Call ID: ${result.callId}`);
       
       this.eventEmitter.emit('call.queued.processing', {
         callId: call.callId,
@@ -148,10 +163,13 @@ export class QueueExecutionService {
       call.startedAt = new Date();
       call.id = result.callId; // Store real call ID
 
+      this.logger.log(`🟡 [QUEUE PROCESSOR] Call status: ${call.status}`);
+      this.logger.log(`🟡 [QUEUE PROCESSOR] ==========================================`);
+
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Failed to process queued call: ${errorMessage}`, errorStack);
+      this.logger.error(`🟡 [QUEUE PROCESSOR] ❌ Failed to process queued call: ${errorMessage}`, errorStack);
       
       call.status = 'failed';
       call.error = errorMessage;
@@ -161,8 +179,11 @@ export class QueueExecutionService {
       if (call.retryCount < call.maxRetries) {
         call.status = 'queued';
         call.scheduledTime = new Date(Date.now() + 60000 * call.retryCount); // Exponential backoff
-        this.logger.log(`Call will be retried: ${call.callId} (attempt ${call.retryCount + 1}/${call.maxRetries})`);
+        this.logger.log(`🟡 [QUEUE PROCESSOR] 🔄 Call will be retried: ${call.callId} (attempt ${call.retryCount + 1}/${call.maxRetries})`);
+      } else {
+        this.logger.error(`🟡 [QUEUE PROCESSOR] ❌ Max retries reached for call: ${call.callId}`);
       }
+      this.logger.log(`🟡 [QUEUE PROCESSOR] ==========================================`);
     } finally {
       this.processing.delete(call.callId);
     }

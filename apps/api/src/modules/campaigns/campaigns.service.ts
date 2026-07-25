@@ -539,6 +539,49 @@ export class CampaignService {
     };
   }
 
+  async getContacts(id: string, companyId: string, pagination: { page: number; limit: number }) {
+    const campaign = await this.prisma.campaign.findFirst({
+      where: { id, companyId, deletedAt: null },
+    });
+
+    if (!campaign) {
+      throw new NotFoundException('Campaign not found');
+    }
+
+    const { page, limit } = pagination;
+    const skip = (page - 1) * limit;
+
+    const [contacts, total] = await Promise.all([
+      this.prisma.contact.findMany({
+        where: { campaignId: id, deletedAt: null },
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          fullName: true,
+          phone: true,
+          email: true,
+          status: true,
+          language: true,
+          company: true,
+          lastCalledAt: true,
+          createdAt: true,
+        },
+      }),
+      this.prisma.contact.count({
+        where: { campaignId: id, deletedAt: null },
+      }),
+    ]);
+
+    return {
+      success: true,
+      data: createPaginatedResponse(contacts, total, page, limit),
+    };
+  }
+
   private validateStatusTransition(currentStatus: string, newStatus: string) {
     const validTransitions: Record<string, string[]> = {
       DRAFT: ['SCHEDULED', 'ACTIVE'],

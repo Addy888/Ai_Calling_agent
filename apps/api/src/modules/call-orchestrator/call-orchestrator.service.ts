@@ -49,10 +49,14 @@ export class CallOrchestratorService implements OnModuleInit {
     voiceId?: string;
     metadata?: Record<string, any>;
   }): Promise<{ callId: string; status: string }> {
-    this.logger.log(`Initiating call for contact: ${params.contactId}`);
+    this.logger.log(`🔵 [CALL ORCHESTRATOR] ===============================================`);
+    this.logger.log(`🔵 [CALL ORCHESTRATOR] Initiating call for contact: ${params.contactId}`);
+    this.logger.log(`🔵 [CALL ORCHESTRATOR] Campaign: ${params.campaignId}`);
+    this.logger.log(`🔵 [CALL ORCHESTRATOR] Company: ${params.companyId}`);
 
     try {
       // Fetch contact details
+      this.logger.log(`🔵 [CALL ORCHESTRATOR] Step 1: Fetching contact details...`);
       const contact = await this.prisma.contact.findUnique({
         where: { id: params.contactId },
       });
@@ -61,7 +65,11 @@ export class CallOrchestratorService implements OnModuleInit {
         throw new Error(`Contact not found: ${params.contactId}`);
       }
 
+      this.logger.log(`🔵 [CALL ORCHESTRATOR] Contact found: ${contact.fullName || contact.firstName} ${contact.lastName || ''}`);
+      this.logger.log(`🔵 [CALL ORCHESTRATOR] Phone: ${contact.phone}`);
+
       // Fetch campaign details
+      this.logger.log(`🔵 [CALL ORCHESTRATOR] Step 2: Fetching campaign details...`);
       const campaign = await this.prisma.campaign.findUnique({
         where: { id: params.campaignId },
         include: {
@@ -70,7 +78,10 @@ export class CallOrchestratorService implements OnModuleInit {
         },
       });
 
+      this.logger.log(`🔵 [CALL ORCHESTRATOR] Campaign: ${campaign?.name || 'Unknown'}`);
+
       // Create call record
+      this.logger.log(`🔵 [CALL ORCHESTRATOR] Step 3: Creating call record in database...`);
       const call = await this.prisma.call.create({
         data: {
           campaignId: params.campaignId,
@@ -79,6 +90,8 @@ export class CallOrchestratorService implements OnModuleInit {
           metadata: params.metadata || {},
         },
       });
+
+      this.logger.log(`🔵 [CALL ORCHESTRATOR] Call record created: ${call.id}`);
 
       // Prepare call session
       const session: CallSession = {
@@ -98,8 +111,14 @@ export class CallOrchestratorService implements OnModuleInit {
       this.activeCalls.set(call.id, session);
 
       // Make telephony call
+      this.logger.log(`🔵 [CALL ORCHESTRATOR] Step 4: Initiating Twilio call...`);
       const callbackUrl = `${process.env.API_BASE_URL}/api/v1/webhooks/twilio/call`;
       const statusCallbackUrl = `${process.env.API_BASE_URL}/api/v1/webhooks/twilio/status`;
+
+      this.logger.log(`🔵 [CALL ORCHESTRATOR] Callback URL: ${callbackUrl}`);
+      this.logger.log(`🔵 [CALL ORCHESTRATOR] Status Callback: ${statusCallbackUrl}`);
+      this.logger.log(`🔵 [CALL ORCHESTRATOR] Calling: ${contact.phone}`);
+      this.logger.log(`🔵 [CALL ORCHESTRATOR] From: ${process.env.TWILIO_PHONE_NUMBER}`);
 
       const result = await this.telephony.makeCall({
         to: contact.phone,
@@ -119,12 +138,17 @@ export class CallOrchestratorService implements OnModuleInit {
       session.callSid = result.callSid;
       session.status = 'CALLING';
 
+      this.logger.log(`🔵 [CALL ORCHESTRATOR] ✅ Twilio call created successfully!`);
+      this.logger.log(`🔵 [CALL ORCHESTRATOR] Call SID: ${result.callSid}`);
+
       // Register callSid → callId mapping for webhook lookups
       if (result.callSid) {
         this.callSidToCallId.set(result.callSid, call.id);
+        this.logger.log(`🔵 [CALL ORCHESTRATOR] Registered CallSid mapping: ${result.callSid} → ${call.id}`);
       }
 
       // Update call record
+      this.logger.log(`🔵 [CALL ORCHESTRATOR] Step 5: Updating call record...`);
       await this.prisma.call.update({
         where: { id: call.id },
         data: {
@@ -136,13 +160,31 @@ export class CallOrchestratorService implements OnModuleInit {
         },
       });
 
+      // Emit call initiated event
+      this.logger.log(`🔵 [CALL ORCHESTRATOR] Step 6: Emitting events...`);
       this.eventEmitter.emit('call.initiated', {
         callId: call.id,
         contactId: params.contactId,
         campaignId: params.campaignId,
+        callSid: result.callSid,
       });
 
-      this.logger.log(`Call initiated: ${call.id}, SID: ${result.callSid}`);
+      // Emit runtime monitor event
+      this.eventEmitter.emit('monitor.call_state', {
+        sessionId: call.id,
+        callSid: result.callSid,
+        state: 'DIALING',
+        contactName: contact.fullName || `${contact.firstName} ${contact.lastName}`,
+        phoneNumber: contact.phone,
+        campaignId: params.campaignId,
+        campaignName: campaign?.name,
+        direction: 'outbound',
+        provider: 'Twilio',
+        timestamp: new Date().toISOString(),
+      });
+
+      this.logger.log(`🔵 [CALL ORCHESTRATOR] ✅ Call initiation complete!`);
+      this.logger.log(`🔵 [CALL ORCHESTRATOR] ===============================================`);
 
       return {
         callId: call.id,

@@ -83,6 +83,107 @@ export class AnalyticsService {
     };
   }
 
+  async getDashboardStatsWithCalls(companyId: string, filters: DashboardStatsDto) {
+    const { startDate, endDate } = this.getDateRange(filters.dateRange);
+    
+    // Get current period stats including call metrics
+    const [
+      totalCompanies,
+      totalUsers,
+      totalCampaigns,
+      totalContacts,
+      totalScripts,
+      totalPrompts,
+      totalKnowledgeBase,
+      totalVoiceProfiles,
+      totalCalls,
+      activeCalls,
+      completedCalls,
+      failedCalls,
+      callStats,
+    ] = await Promise.all([
+      this.prisma.company.count({ where: { deletedAt: null } }),
+      this.prisma.user.count({ where: { companyId, deletedAt: null } }),
+      this.prisma.campaign.count({ where: { companyId, deletedAt: null } }),
+      this.prisma.contact.count({ where: { companyId, deletedAt: null } }),
+      this.prisma.script.count({ where: { companyId, deletedAt: null } }),
+      this.prisma.prompt.count({ where: { companyId, deletedAt: null } }),
+      this.prisma.knowledgeBase.count({ where: { companyId, deletedAt: null } }),
+      this.prisma.voiceProfile.count({ where: { companyId, deletedAt: null } }),
+      this.prisma.call.count({ 
+        where: { 
+          campaign: { companyId }, 
+          deletedAt: null 
+        } 
+      }),
+      this.prisma.call.count({ 
+        where: { 
+          campaign: { companyId }, 
+          status: 'IN_PROGRESS', 
+          deletedAt: null 
+        } 
+      }),
+      this.prisma.call.count({ 
+        where: { 
+          campaign: { companyId }, 
+          status: 'COMPLETED', 
+          deletedAt: null 
+        } 
+      }),
+      this.prisma.call.count({ 
+        where: { 
+          campaign: { companyId }, 
+          status: { in: ['FAILED', 'CANCELLED'] }, 
+          deletedAt: null 
+        } 
+      }),
+      this.prisma.call.aggregate({
+        where: { 
+          campaign: { companyId }, 
+          deletedAt: null,
+          duration: { not: null }
+        },
+        _avg: { duration: true },
+      }),
+    ]);
+
+    let growthData = {};
+    if (filters.includeGrowth) {
+      const previousPeriod = this.getPreviousPeriod(filters.dateRange);
+      growthData = await this.calculateGrowthRates(companyId, startDate, endDate, previousPeriod);
+    }
+
+    // Calculate average duration in seconds
+    const averageDuration = callStats._avg.duration || 0;
+
+    return {
+      success: true,
+      data: {
+        totalCalls,
+        activeCalls,
+        completedCalls,
+        failedCalls,
+        averageDuration: Math.round(averageDuration),
+        growth: growthData['calls'] || 0,
+        overview: {
+          totalCompanies: { value: totalCompanies, growth: growthData['companies'] || 0 },
+          totalUsers: { value: totalUsers, growth: growthData['users'] || 0 },
+          totalCampaigns: { value: totalCampaigns, growth: growthData['campaigns'] || 0 },
+          totalContacts: { value: totalContacts, growth: growthData['contacts'] || 0 },
+          totalScripts: { value: totalScripts, growth: growthData['scripts'] || 0 },
+          totalPrompts: { value: totalPrompts, growth: growthData['prompts'] || 0 },
+          totalKnowledgeBase: { value: totalKnowledgeBase, growth: growthData['knowledgeBase'] || 0 },
+          totalVoiceProfiles: { value: totalVoiceProfiles, growth: growthData['voiceProfiles'] || 0 },
+        },
+        period: {
+          startDate,
+          endDate,
+          range: filters.dateRange,
+        },
+      },
+    };
+  }
+
   async getChartData(companyId: string, params: ChartDataDto) {
     const { startDate, endDate } = params.dateRange === DateRangeType.CUSTOM 
       ? { startDate: new Date(params.startDate), endDate: new Date(params.endDate) }
@@ -318,7 +419,7 @@ export class AnalyticsService {
   }
 
   private async getCountsForPeriod(companyId: string, startDate: Date, endDate: Date) {
-    const [campaigns, contacts, scripts, prompts, knowledgeBase, voiceProfiles] = await Promise.all([
+    const [campaigns, contacts, scripts, prompts, knowledgeBase, voiceProfiles, calls] = await Promise.all([
       this.prisma.campaign.count({
         where: { 
           companyId, 
@@ -361,6 +462,13 @@ export class AnalyticsService {
           createdAt: { gte: startDate, lte: endDate }
         }
       }),
+      this.prisma.call.count({
+        where: { 
+          campaign: { companyId }, 
+          deletedAt: null,
+          createdAt: { gte: startDate, lte: endDate }
+        }
+      }),
     ]);
 
     return {
@@ -370,6 +478,7 @@ export class AnalyticsService {
       prompts,
       knowledgeBase,
       voiceProfiles,
+      calls,
     };
   }
 

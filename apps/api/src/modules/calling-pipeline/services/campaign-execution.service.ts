@@ -193,17 +193,26 @@ export class CampaignExecutionService {
     const execution = this.campaignExecutions.get(executionId);
 
     if (!execution) {
+      this.logger.warn(`❌ Execution not found: ${executionId}`);
       return;
     }
 
     if (execution.state !== CampaignState.RUNNING) {
+      this.logger.log(`⏸️  Campaign not running (state: ${execution.state}), skipping contact processing`);
       return;
     }
 
     // Calculate how many calls to start
     const availableSlots = execution.concurrentCalls - execution.activeCalls;
 
+    this.logger.log(`📊 [CAMPAIGN ${executionId}] Processing contacts:`);
+    this.logger.log(`   - Concurrent calls limit: ${execution.concurrentCalls}`);
+    this.logger.log(`   - Active calls: ${execution.activeCalls}`);
+    this.logger.log(`   - Available slots: ${availableSlots}`);
+    this.logger.log(`   - Contacts in queue: ${execution.contactQueue.length}`);
+
     if (availableSlots <= 0) {
+      this.logger.log(`⏳ No available slots. Waiting for calls to complete...`);
       return;
     }
 
@@ -211,21 +220,27 @@ export class CampaignExecutionService {
     const contactsToProcess = execution.contactQueue.splice(0, availableSlots);
 
     if (contactsToProcess.length === 0) {
+      this.logger.log(`✅ No more contacts in queue`);
       // Check if campaign is complete
       if (execution.activeCalls === 0) {
+        this.logger.log(`🎉 Campaign complete! All contacts processed.`);
         await this.completeCampaign(executionId);
       }
       return;
     }
 
+    this.logger.log(`📞 Starting ${contactsToProcess.length} calls...`);
+
     // Queue calls for each contact
     for (const contact of contactsToProcess) {
       try {
+        this.logger.log(`📞 Queueing call for contact: ${contact.name} (${contact.phoneNumber})`);
+        
         await this.queueExecution.queueCall({
           contactId: contact.id,
           campaignId: execution.campaignId,
-          agentId: execution.campaignData.agentId || execution.campaignId, // fallback to campaignId if no agentId
-          phoneNumber: contact.phone, // DB field is 'phone', not 'phoneNumber'
+          agentId: execution.campaignData.agentId || execution.campaignId,
+          phoneNumber: contact.phoneNumber,
           context: {
             executionId,
             companyId: execution.companyId,
@@ -242,12 +257,18 @@ export class CampaignExecutionService {
           contactId: contact.id,
           timestamp: new Date(),
         });
+
+        this.logger.log(`✅ Call queued successfully for ${contact.name}`);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        this.logger.error(`Failed to queue call for contact ${contact.id}: ${errorMessage}`);
+        this.logger.error(`❌ Failed to queue call for contact ${contact.id}: ${errorMessage}`, error instanceof Error ? error.stack : undefined);
         execution.failedCalls++;
       }
     }
+
+    this.logger.log(`📊 Campaign status after queuing:`);
+    this.logger.log(`   - Active calls: ${execution.activeCalls}`);
+    this.logger.log(`   - Remaining in queue: ${execution.contactQueue.length}`);
   }
 
   /**
@@ -424,10 +445,14 @@ export class CampaignExecutionService {
         },
       });
 
+      this.logger.log(`✅ Loaded ${contacts.length} contacts for campaign ${campaignId}`);
+
       return contacts.map(contact => ({
         id: contact.id,
-        phoneNumber: contact.phone,
-        name: contact.fullName,
+        phoneNumber: contact.phone, // Map phone field to phoneNumber
+        phone: contact.phone, // Also keep original field
+        name: contact.fullName || `${contact.firstName || ''} ${contact.lastName || ''}`.trim(),
+        fullName: contact.fullName,
         firstName: contact.firstName,
         lastName: contact.lastName,
         language: contact.language,
