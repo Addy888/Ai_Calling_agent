@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import * as twilio from 'twilio';
 import {
   TelephonyProvider,
+  TelephonyProviderType,
   MakeCallParams,
   MakeCallResponse,
   CallStatusData,
@@ -14,7 +15,8 @@ import {
  */
 @Injectable()
 export class TwilioProvider implements TelephonyProvider {
-  readonly name = 'twilio';
+  readonly name = 'TwilioProvider';
+  readonly providerType: TelephonyProviderType = 'twilio';
   private readonly logger = new Logger(TwilioProvider.name);
   private client: twilio.Twilio | null = null;
   private accountSid: string;
@@ -63,14 +65,14 @@ export class TwilioProvider implements TelephonyProvider {
       const call = await this.client.calls.create({
         to: params.to,
         from: params.from || this.fromNumber,
-        url: params.callbackUrl, // TwiML instructions URL
-        statusCallback: `${params.callbackUrl}/status`,
+        url: params.callbackUrl,
+        statusCallback: params.statusCallback || `${params.callbackUrl}/status`,
         statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
         statusCallbackMethod: 'POST',
         record: params.recordCall ?? true,
         recordingStatusCallback: `${params.callbackUrl}/recording`,
         timeout: params.timeout || 60,
-        machineDetection: 'DetectMessageEnd', // Detect voicemail
+        machineDetection: 'DetectMessageEnd',
       });
 
       this.logger.log(`Call initiated: ${call.sid} to ${params.to}`);

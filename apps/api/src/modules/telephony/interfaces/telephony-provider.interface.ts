@@ -1,84 +1,134 @@
 /**
  * Telephony Provider Interface
- * Abstract interface for telephony providers (Twilio, Exotel, Plivo, etc.)
+ * Defines the contract that all telephony providers must implement
  */
 
 export interface CallOptions {
   to: string;
   from: string;
-  callbackUrl: string;
-  statusCallback?: string;
+  campaignId: string;
+  contactId: string;
+  callbackUrl?: string;
+  statusCallbackUrl?: string;
   timeout?: number;
-  record?: boolean;
-  recordingStatusCallback?: string;
   metadata?: Record<string, any>;
 }
 
 export interface CallResult {
   callSid: string;
-  status: string;
-  direction: string;
+  status: CallStatus;
   to: string;
   from: string;
+  timestamp: Date;
+  provider: string;
+}
+
+export interface CallStatusResult {
+  callSid: string;
+  status: CallStatus;
   duration?: number;
   startTime?: Date;
   endTime?: Date;
-  metadata?: Record<string, any>;
-}
-
-export interface TelephonyWebhookData {
-  callSid: string;
-  status: string;
-  duration?: number;
-  recordingUrl?: string;
+  answeredBy?: string;
   errorCode?: string;
   errorMessage?: string;
-  metadata?: Record<string, any>;
 }
 
-export interface ITeflehonyProvider {
+export interface RecordingResult {
+  recordingSid: string;
+  callSid: string;
+  url: string;
+  duration: number;
+  format: string;
+  timestamp: Date;
+}
+
+export interface TranscriptEntry {
+  speaker: 'AI' | 'CUSTOMER';
+  message: string;
+  timestamp: Date;
+  confidence?: number;
+}
+
+export enum CallStatus {
+  QUEUED = 'QUEUED',
+  INITIATING = 'INITIATING',
+  RINGING = 'RINGING',
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETED = 'COMPLETED',
+  BUSY = 'BUSY',
+  NO_ANSWER = 'NO_ANSWER',
+  FAILED = 'FAILED',
+  CANCELLED = 'CANCELLED',
+}
+
+/**
+ * Base Telephony Provider Interface
+ * All providers (Mock, Twilio, etc.) must implement this
+ */
+export interface ITelephonyProvider {
   /**
-   * Provider name (twilio, exotel, plivo, etc.)
+   * Provider name
    */
-  getName(): string;
+  readonly name: string;
 
   /**
-   * Initialize outbound call
+   * Initialize the provider
+   */
+  initialize(): Promise<void>;
+
+  /**
+   * Make an outbound call
    */
   makeCall(options: CallOptions): Promise<CallResult>;
 
   /**
-   * End an active call
-   */
-  endCall(callSid: string): Promise<boolean>;
-
-  /**
    * Get call status
    */
-  getCallStatus(callSid: string): Promise<CallResult>;
+  getCallStatus(callSid: string): Promise<CallStatusResult>;
 
   /**
-   * Generate TwiML/equivalent for call flow
+   * Hangup/end a call
    */
-  generateCallFlow(websocketUrl: string, metadata?: Record<string, any>): string;
+  hangupCall(callSid: string): Promise<boolean>;
 
   /**
-   * Parse webhook data from provider
+   * Get recording for a call
    */
-  parseWebhook(body: any): TelephonyWebhookData;
+  getRecording(callSid: string): Promise<RecordingResult | null>;
 
   /**
-   * Get recording URL
+   * Get transcript for a call
    */
-  getRecordingUrl(callSid: string, recordingSid: string): Promise<string>;
+  getTranscript(callSid: string): Promise<TranscriptEntry[]>;
 
   /**
-   * Download recording
+   * Send audio/text during call (for TTS)
    */
-  downloadRecording(recordingUrl: string): Promise<Buffer>;
+  sendMessage?(callSid: string, message: string): Promise<boolean>;
 
   /**
-   * Validate webhook signature (security)
+   * Check if provider is healthy
    */
-  validateWebhookSignature(signature: string, url: string, params: any): boolean;
+  healthCheck(): Promise<boolean>;
+}
+
+/**
+ * Provider Events
+ */
+export interface ProviderEvent {
+  type: ProviderEventType;
+  callSid: string;
+  timestamp: Date;
+  data?: any;
+}
+
+export enum ProviderEventType {
+  CALL_INITIATED = 'CALL_INITIATED',
+  CALL_RINGING = 'CALL_RINGING',
+  CALL_ANSWERED = 'CALL_ANSWERED',
+  CALL_COMPLETED = 'CALL_COMPLETED',
+  CALL_FAILED = 'CALL_FAILED',
+  RECORDING_AVAILABLE = 'RECORDING_AVAILABLE',
+  TRANSCRIPT_UPDATED = 'TRANSCRIPT_UPDATED',
 }

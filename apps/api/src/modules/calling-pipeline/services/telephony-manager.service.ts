@@ -1,7 +1,7 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, Inject, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { TwilioProvider } from '../providers/twilio.provider';
 import {
+  TELEPHONY_PROVIDER_TOKEN,
   TelephonyProvider,
   MakeCallParams,
   MakeCallResponse,
@@ -10,99 +10,101 @@ import {
 
 /**
  * Telephony Manager Service
- * Manages telephony providers and routes calls
+ *
+ * The SINGLE point through which the rest of the application interacts with
+ * telephony. It has ZERO knowledge of which provider is active — whether it's
+ * MockTelephonyProvider (development) or TwilioProvider (production) is
+ * determined entirely at bootstrap via the TELEPHONY_PROVIDER env variable
+ * and injected through TELEPHONY_PROVIDER_TOKEN.
+ *
+ * ──────────────────────────────────────────────────────────────
+ *  To switch from mock to Twilio:
+ *   change .env:  TELEPHONY_PROVIDER=twilio
+ *  Zero code changes required.
+ * ──────────────────────────────────────────────────────────────
  */
 @Injectable()
 export class TelephonyManagerService implements OnModuleInit {
   private readonly logger = new Logger(TelephonyManagerService.name);
-  private activeProvider: TelephonyProvider;
-  private readonly providers = new Map<string, TelephonyProvider>();
 
   constructor(
     private readonly configService: ConfigService,
-    private readonly twilioProvider: TwilioProvider,
-  ) {
-    // Register providers
-    this.providers.set('twilio', this.twilioProvider);
-    
-    // Set active provider from config
-    const providerName = this.configService.get<string>('TELEPHONY_PROVIDER', 'twilio');
-    this.activeProvider = this.providers.get(providerName) || this.twilioProvider;
-  }
+    @Inject(TELEPHONY_PROVIDER_TOKEN)
+    private readonly provider: TelephonyProvider,
+  ) {}
 
+  // ───────────────────────────────────────────────────────────────────────────
   async onModuleInit(): Promise<void> {
-    this.logger.log(`Initializing telephony manager with provider: ${this.activeProvider.name}`);
-    
+    const providerEnv = this.configService.get<string>('TELEPHONY_PROVIDER', 'mock');
+
+    this.logger.log(`\n${'═'.repeat(60)}`);
+    this.logger.log(`✅ Telephony Provider : ${this.provider.name}`);
+    this.logger.log(`✅ Provider Type      : ${this.provider.providerType}`);
+    this.logger.log(`✅ Env Selection      : TELEPHONY_PROVIDER=${providerEnv}`);
+    this.logger.log(`${'═'.repeat(60)}\n`);
+
     try {
-      await this.activeProvider.initialize();
-      this.logger.log('Telephony manager initialized successfully');
+      await this.provider.initialize();
+      this.logger.log(`Provider "${this.provider.name}" initialized successfully`);
     } catch (error) {
       if (error instanceof Error) {
-        this.logger.error(`Failed to initialize telephony manager: ${error.message}`, error.stack);
+        this.logger.error(
+          `Failed to initialize telephony provider "${this.provider.name}": ${error.message}`,
+          error.stack,
+        );
       }
     }
   }
 
+  // ───────────────────────────────────────────────────────────────────────────
   /**
    * Make an outbound call
+   * Routes transparently to the active provider
    */
   async makeCall(params: MakeCallParams): Promise<MakeCallResponse> {
-    this.logger.log(`Making call via ${this.activeProvider.name} to ${params.to}`);
-    return this.activeProvider.makeCall(params);
+    this.logger.log(
+      `[${this.provider.name}] Making call to ${params.to} (session: ${params.sessionId})`,
+    );
+    return this.provider.makeCall(params);
   }
 
+  // ───────────────────────────────────────────────────────────────────────────
   /**
-   * End a call
+   * End an active call
    */
   async endCall(callSid: string): Promise<void> {
-    this.logger.log(`Ending call: ${callSid}`);
-    return this.activeProvider.endCall(callSid);
+    this.logger.log(`[${this.provider.name}] Ending call: ${callSid}`);
+    return this.provider.endCall(callSid);
   }
 
+  // ───────────────────────────────────────────────────────────────────────────
   /**
-   * Get call status
+   * Get status of a call
    */
   async getCallStatus(callSid: string): Promise<CallStatusData> {
-    return this.activeProvider.getCallStatus(callSid);
+    return this.provider.getCallStatus(callSid);
   }
 
+  // ───────────────────────────────────────────────────────────────────────────
   /**
-   * Check if telephony is available
+   * Check provider health
    */
   async isAvailable(): Promise<boolean> {
-    return this.activeProvider.isAvailable();
+    return this.provider.isAvailable();
   }
 
+  // ───────────────────────────────────────────────────────────────────────────
   /**
-   * Get active provider name
+   * Get active provider display name
    */
   getActiveProviderName(): string {
-    return this.activeProvider.name;
+    return this.provider.name;
   }
 
   /**
-   * Switch provider (for advanced use cases)
+   * Get active provider type
    */
-  async switchProvider(providerName: string): Promise<void> {
-    const provider = this.providers.get(providerName);
-    
-    if (!provider) {
-      throw new Error(`Provider not found: ${providerName}`);
-    }
-
-    await provider.initialize();
-    this.activeProvider = provider;
-    
-    this.logger.log(`Switched to provider: ${providerName}`);
-  }
-
-  /**
-   * Get all registered providers
-   */
-  getProviders(): Array<{ name: string; isActive: boolean }> {
-    return Array.from(this.providers.entries()).map(([name, provider]) => ({
-      name,
-      isActive: provider === this.activeProvider,
-    }));
+  getActiveProviderType(): string {
+    return this.provider.providerType;
   }
 }

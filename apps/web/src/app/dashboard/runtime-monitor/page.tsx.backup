@@ -822,9 +822,6 @@ export default function RuntimeMonitorPage() {
           )}
         </CardContent>
       </Card>
-
-      {/* ── Call Details Panel (Conditional) ─────────────────────────────── */}
-      {selectedCall && (
             <div className="space-y-4">
               {/* Call Header */}
               <Card className="bg-slate-900/60 border-slate-800">
@@ -884,9 +881,9 @@ export default function RuntimeMonitorPage() {
                   {/* Waveform */}
                   <div className="mt-3 flex items-center gap-3">
                     <Bot className="h-4 w-4 text-purple-400 flex-shrink-0" />
-                    <WaveformBars active={selectedCall.state === 'PLAYING_RESPONSE' || selectedCall.state === 'GREETING'} />
+                    <WaveformBars active={selectedCall.state === 'AI_SPEAKING'} />
                     <div className="flex-1 h-px bg-slate-700" />
-                    <WaveformBars active={selectedCall.state === 'LISTENING'} />
+                    <WaveformBars active={selectedCall.state === 'CUSTOMER_SPEAKING'} />
                     <User className="h-4 w-4 text-teal-400 flex-shrink-0" />
                   </div>
                 </CardContent>
@@ -1079,6 +1076,8 @@ export default function RuntimeMonitorPage() {
               </Tabs>
             </div>
           )}
+        </div>
+      </div>
 
       {/* ── Completed Calls History ─────────────────────────────────────── */}
       {completedCalls.length > 0 && (

@@ -99,15 +99,15 @@ export class CallOrchestratorService implements OnModuleInit {
 
       // Make telephony call
       const callbackUrl = `${process.env.API_BASE_URL}/api/v1/webhooks/twilio/call`;
-      const statusCallback = `${process.env.API_BASE_URL}/api/v1/webhooks/twilio/status`;
+      const statusCallbackUrl = `${process.env.API_BASE_URL}/api/v1/webhooks/twilio/status`;
 
       const result = await this.telephony.makeCall({
         to: contact.phone,
         from: process.env.TWILIO_PHONE_NUMBER,
+        campaignId: params.campaignId,
+        contactId: params.contactId,
         callbackUrl,
-        statusCallback,
-        record: true,
-        recordingStatusCallback: `${process.env.API_BASE_URL}/api/v1/webhooks/twilio/recording`,
+        statusCallbackUrl,
         metadata: {
           callId: call.id,
           campaignId: params.campaignId,

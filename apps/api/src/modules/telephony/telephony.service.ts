@@ -1,136 +1,206 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import {
-  ITeflehonyProvider,
-  CallOptions,
-  CallResult,
-  TelephonyWebhookData,
-} from './interfaces/telephony-provider.interface';
-import { TwilioProvider } from './providers/twilio.provider';
-
 /**
  * Telephony Service
- * Manages telephony providers and call operations
+ * Unified service that works with any telephony provider
+ * Provider-agnostic - uses dependency injection
  */
+
+import { Injectable, Logger, Inject } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import {
+  ITelephonyProvider,
+  CallOptions,
+  CallResult,
+  CallStatusResult,
+  RecordingResult,
+  TranscriptEntry,
+} from './interfaces/telephony-provider.interface';
+
 @Injectable()
 export class TelephonyService {
   private readonly logger = new Logger(TelephonyService.name);
-  private provider: ITeflehonyProvider;
-  private readonly providers: Map<string, ITeflehonyProvider> = new Map();
 
   constructor(
-    private readonly configService: ConfigService,
-    private readonly twilioProvider: TwilioProvider,
+    @Inject('TELEPHONY_PROVIDER')
+    private readonly provider: ITelephonyProvider,
+    private readonly eventEmitter: EventEmitter2,
   ) {
-    // Register providers
-    this.registerProvider(this.twilioProvider);
-
-    // Set active provider based on config
-    const activeProvider = this.configService.get<string>('TELEPHONY_PROVIDER', 'twilio');
-    this.setProvider(activeProvider);
+    this.logger.log(`Telephony Service using provider: ${this.provider.name}`);
   }
 
   /**
-   * Register a telephony provider
+   * Initialize the telephony service
    */
-  registerProvider(provider: ITeflehonyProvider): void {
-    this.providers.set(provider.getName(), provider);
-    this.logger.log(`Registered provider: ${provider.getName()}`);
-  }
-
-  /**
-   * Set active telephony provider
-   */
-  setProvider(providerName: string): void {
-    const provider = this.providers.get(providerName);
-    
-    if (!provider) {
-      throw new BadRequestException(`Provider not found: ${providerName}`);
-    }
-
-    this.provider = provider;
-    this.logger.log(`Active provider set to: ${providerName}`);
-  }
-
-  /**
-   * Get active provider
-   */
-  getProvider(): ITeflehonyProvider {
-    if (!this.provider) {
-      throw new Error('No telephony provider configured');
-    }
-    return this.provider;
+  async initialize(): Promise<void> {
+    await this.provider.initialize();
+    this.logger.log('Telephony Service initialized');
   }
 
   /**
    * Make an outbound call
    */
   async makeCall(options: CallOptions): Promise<CallResult> {
-    this.logger.log(`Making call via ${this.provider.getName()}`);
-    return this.provider.makeCall(options);
-  }
-
-  /**
-   * End a call
-   */
-  async endCall(callSid: string): Promise<boolean> {
-    this.logger.log(`Ending call: ${callSid}`);
-    return this.provider.endCall(callSid);
+    this.logger.log(`Making call to ${options.to}`);
+    return await this.provider.makeCall(options);
   }
 
   /**
    * Get call status
    */
-  async getCallStatus(callSid: string): Promise<CallResult> {
-    return this.provider.getCallStatus(callSid);
+  async getCallStatus(callSid: string): Promise<CallStatusResult> {
+    return await this.provider.getCallStatus(callSid);
   }
 
   /**
-   * Generate call flow (TwiML/equivalent)
+   * Hangup/end a call
+   */
+  async hangupCall(callSid: string): Promise<boolean> {
+    this.logger.log(`Hanging up call ${callSid}`);
+    return await this.provider.hangupCall(callSid);
+  }
+
+  /**
+   * Get recording for a call
+   */
+  async getRecording(callSid: string): Promise<RecordingResult | null> {
+    return await this.provider.getRecording(callSid);
+  }
+
+  /**
+   * Get transcript for a call
+   */
+  async getTranscript(callSid: string): Promise<TranscriptEntry[]> {
+    return await this.provider.getTranscript(callSid);
+  }
+
+  /**
+   * Send message during call (for AI responses)
+   */
+  async sendMessage(callSid: string, message: string): Promise<boolean> {
+    if (!this.provider.sendMessage) {
+      this.logger.warn('Provider does not support sendMessage');
+      return false;
+    }
+
+    return await this.provider.sendMessage(callSid, message);
+  }
+
+  /**
+   * Health check
+   */
+  async healthCheck(): Promise<{
+    healthy: boolean;
+    provider: string;
+    timestamp: Date;
+  }> {
+    const healthy = await this.provider.healthCheck();
+
+    return {
+      healthy,
+      provider: this.provider.name,
+      timestamp: new Date(),
+    };
+  }
+
+  /**
+   * Get provider name
+   */
+  getProviderName(): string {
+    return this.provider.name;
+  }
+
+  /**
+   * Get provider instance (for provider-specific operations)
+   */
+  getProvider(): ITelephonyProvider {
+    return this.provider;
+  }
+
+  /**
+   * Parse webhook data (for Twilio webhooks)
+   */
+  parseWebhook(body: any): {
+    callSid: string;
+    status: string;
+    duration?: number;
+    recordingUrl?: string;
+    errorCode?: string;
+    errorMessage?: string;
+    metadata?: Record<string, any>;
+  } {
+    return {
+      callSid: body.CallSid,
+      status: body.CallStatus,
+      duration: body.CallDuration ? parseInt(body.CallDuration) : undefined,
+      recordingUrl: body.RecordingUrl,
+      errorCode: body.ErrorCode,
+      errorMessage: body.ErrorMessage,
+      metadata: {
+        from: body.From,
+        to: body.To,
+        direction: body.Direction,
+        timestamp: body.Timestamp,
+      },
+    };
+  }
+
+  /**
+   * Generate call flow TwiML (for Twilio)
    */
   generateCallFlow(websocketUrl: string, metadata?: Record<string, any>): string {
-    return this.provider.generateCallFlow(websocketUrl, metadata);
+    const Twilio = require('twilio');
+    const VoiceResponse = Twilio.twiml.VoiceResponse;
+    const response = new VoiceResponse();
+
+    // Connect to WebSocket for bidirectional streaming
+    const connect = response.connect();
+    const stream = connect.stream({
+      url: websocketUrl,
+    });
+
+    // Add custom parameters
+    if (metadata) {
+      Object.entries(metadata).forEach(([key, value]) => {
+        stream.parameter({ name: key, value: String(value) });
+      });
+    }
+
+    return response.toString();
   }
 
   /**
-   * Parse webhook data
+   * End call (alias for hangupCall for backwards compatibility)
    */
-  parseWebhook(body: any): TelephonyWebhookData {
-    return this.provider.parseWebhook(body);
+  async endCall(callSid: string): Promise<boolean> {
+    return await this.hangupCall(callSid);
   }
 
   /**
-   * Get recording URL
-   */
-  async getRecordingUrl(callSid: string, recordingSid: string): Promise<string> {
-    return this.provider.getRecordingUrl(callSid, recordingSid);
-  }
-
-  /**
-   * Download recording
+   * Download recording (get recording buffer)
    */
   async downloadRecording(recordingUrl: string): Promise<Buffer> {
-    return this.provider.downloadRecording(recordingUrl);
-  }
+    this.logger.log(`Downloading recording from: ${recordingUrl}`);
 
-  /**
-   * Validate webhook signature
-   */
-  validateWebhookSignature(signature: string, url: string, params: any): boolean {
-    return this.provider.validateWebhookSignature(signature, url, params);
-  }
+    try {
+      const accountSid = process.env.TWILIO_ACCOUNT_SID;
+      const authToken = process.env.TWILIO_AUTH_TOKEN;
 
-  /**
-   * Get all available providers
-   */
-  getAvailableProviders(): string[] {
-    return Array.from(this.providers.keys());
-  }
+      const response = await fetch(recordingUrl, {
+        headers: {
+          Authorization: `Basic ${Buffer.from(
+            `${accountSid}:${authToken}`,
+          ).toString('base64')}`,
+        },
+      });
 
-  /**
-   * Check if provider is configured
-   */
-  isProviderConfigured(providerName: string): boolean {
-    return this.providers.has(providerName);
+      if (!response.ok) {
+        throw new Error(`Failed to download recording: ${response.statusText}`);
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      return Buffer.from(arrayBuffer);
+    } catch (error) {
+      this.logger.error(`Failed to download recording: ${error.message}`);
+      throw error;
+    }
   }
 }
