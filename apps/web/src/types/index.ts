@@ -458,3 +458,174 @@ export interface PromptFilterDto {
   createdAfter?: string
   createdBefore?: string
 }
+
+// ── Telephony types ───────────────────────────────────────────────────────────
+
+export interface SIMCard {
+  id: string
+  gatewayId: string
+  companyId: string
+  simNumber: string
+  operator?: string
+  portNumber: number
+  status: string
+  signal?: number
+  callsToday: number
+  dailyLimit?: number
+  isActive: boolean
+  isPreferred: boolean
+  priority: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface GSMGateway {
+  id: string
+  companyId: string
+  name: string
+  model?: string
+  ipAddress: string
+  port: number
+  status: string
+  isOnline: boolean
+  activePorts: number
+  totalPorts: number
+  sims: SIMCard[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TelephonyProfile {
+  id: string
+  companyId: string
+  name: string
+  description?: string
+  provider: string
+  gatewayId?: string
+  simId?: string
+  callerNumber: string
+  isDefault: boolean
+  isActive: boolean
+  config?: Record<string, any>
+  metadata?: Record<string, any>
+  createdAt: string
+  updatedAt: string
+  deletedAt?: string
+  // enriched fields
+  gateway?: Pick<GSMGateway, 'id' | 'name' | 'ipAddress' | 'port' | 'model' | 'status' | 'isOnline' | 'activePorts' | 'totalPorts'> | null
+  sim?: Pick<SIMCard, 'id' | 'simNumber' | 'operator' | 'portNumber' | 'status' | 'signal' | 'callsToday' | 'dailyLimit' | 'isActive' | 'isPreferred'> | null
+  campaigns?: Array<{ id: string; name: string; status: string }>
+}
+
+// ── AI Agent types ────────────────────────────────────────────────────────────
+
+export interface AIAgent {
+  id: string
+  companyId: string
+  name: string
+  description?: string
+  type: string
+  status: string
+  isEnabled: boolean
+  config?: Record<string, any>
+  capabilities?: string[]
+  createdAt: string
+  updatedAt: string
+}
+
+// ── Voice Library types ───────────────────────────────────────────────────────
+
+export interface VoiceLibrary {
+  id: string
+  companyId: string
+  providerId: string
+  name: string
+  language: string
+  gender: string
+  voiceCode: string
+  description?: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+// ── Campaign Contact / Upload types ──────────────────────────────────────────
+
+export interface CampaignUpload {
+  id: string
+  campaignId: string
+  companyId: string
+  fileName: string
+  originalName: string
+  filePath: string
+  fileType: string
+  fileSize: number
+  status: 'PENDING' | 'VALIDATING' | 'VALID' | 'INVALID' | 'PROCESSING' | 'COMPLETED' | 'FAILED'
+  totalRows?: number
+  validRows?: number
+  invalidRows?: number
+  duplicateRows?: number
+  processedRows?: number
+  processedAt?: string
+  validationErrors?: Array<{ row: number; phone?: string; errors: string[] }>
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CampaignContact {
+  id: string
+  campaignId: string
+  uploadId: string
+  companyId: string
+  firstName: string
+  lastName: string
+  fullName: string
+  phone: string
+  countryCode?: string
+  email?: string
+  language: string
+  city?: string
+  state?: string
+  country?: string
+  customFields?: Record<string, any>
+  status: string
+  createdAt: string
+  updatedAt: string
+}
+
+// ── Extended Campaign Create DTO ──────────────────────────────────────────────
+
+export interface CreateCampaignExtendedDto {
+  name: string
+  description?: string
+  campaignType?: string
+  status?: CampaignStatus
+  scriptId?: string
+  promptId?: string
+  voiceId?: string
+  telephonyProfileId?: string
+  concurrentCalls?: number
+  callDelay?: number
+  maxRetries?: number
+  retryDelay?: number
+  startDate?: string
+  endDate?: string
+  timezone?: string
+  settings?: {
+    aiAgentId?: string
+    knowledgeBaseId?: string
+    memoryEnabled?: boolean
+    temperature?: number
+    maxTokens?: number
+    interruptMode?: string
+    silenceTimeout?: number
+    language?: string
+    enableRecording?: boolean
+    enableTranscript?: boolean
+    enableAmd?: boolean
+    voicemailDetection?: boolean
+    businessHours?: Record<string, any>
+  }
+  notes?: string
+}
+

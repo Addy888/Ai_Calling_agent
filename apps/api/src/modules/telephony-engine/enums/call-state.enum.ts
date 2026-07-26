@@ -25,6 +25,7 @@ export enum ProviderType {
   PLIVO = 'plivo',
   SIP = 'sip',
   ASTERISK = 'asterisk',
+  FREESWITCH = 'freeswitch',
 }
 
 /**

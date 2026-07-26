@@ -51,6 +51,9 @@ import { TelephonyEngineModule } from './modules/telephony-engine/telephony-engi
 import { ConversationRuntimeModule } from './modules/conversation-runtime/conversation-runtime.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { VoiceStreamingModule } from './modules/voice-streaming/voice-streaming.module';
+import { TelephonyProfileModule } from './modules/telephony-profile/telephony-profile.module';
+import { CampaignContactsModule } from './modules/campaign-contacts/campaign-contacts.module';
+// import { GSMGatewayModule } from './modules/gsm-gateway/gsm-gateway.module'; // TODO: Fix compilation errors
 
 @Module({
   imports: [
@@ -108,6 +111,9 @@ import { VoiceStreamingModule } from './modules/voice-streaming/voice-streaming.
     TelephonyEngineModule,
     ConversationRuntimeModule,
     VoiceStreamingModule,
+    TelephonyProfileModule,
+    CampaignContactsModule,
+    // GSMGatewayModule, // TODO: Fix compilation errors
   ],
   providers: [
     {

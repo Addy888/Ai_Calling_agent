@@ -183,6 +183,18 @@ export const campaignApi = {
 
   getStatistics: (id: string) => 
     api.get<ApiResponse<CampaignStatistics>>(`/campaigns/${id}/statistics`),
+
+  start: (id: string, options?: { concurrentCalls?: number }) => 
+    api.post<ApiResponse<{ executionId: string; status: string }>>(`/campaign-api/${id}/start`, options),
+
+  pause: (id: string) => 
+    api.post<ApiResponse<{ success: boolean }>>(`/campaign-api/${id}/pause`),
+
+  resume: (id: string) => 
+    api.post<ApiResponse<{ success: boolean }>>(`/campaign-api/${id}/resume`),
+
+  stop: (id: string, force?: boolean) => 
+    api.post<ApiResponse<{ success: boolean }>>(`/campaign-api/${id}/stop`, { force }),
 };
 
 // ── Script API ───────────────────────────────────────────────────────────────
@@ -352,4 +364,80 @@ export const contactApi = {
 
   export: (params?: { search?: string; status?: string }) =>
     api.get('/contacts/export', { params, responseType: 'blob' }),
-};
+};
+
+// ── Telephony Profile API ─────────────────────────────────────────────────────
+
+export const telephonyProfileApi = {
+  getAll: (params?: { isActive?: boolean; isDefault?: boolean }) =>
+    api.get<ApiResponse<{ items: any[]; total: number }>>('/api/v1/telephony-profiles', { params }),
+
+  getById: (id: string) =>
+    api.get<ApiResponse<any>>(`/api/v1/telephony-profiles/${id}`),
+
+  getDefault: () =>
+    api.get<ApiResponse<any>>('/api/v1/telephony-profiles/default'),
+
+  getAvailableGateways: () =>
+    api.get<ApiResponse<any[]>>('/api/v1/telephony-profiles/gateways'),
+
+  create: (data: any) =>
+    api.post<ApiResponse<any>>('/api/v1/telephony-profiles', data),
+
+  update: (id: string, data: any) =>
+    api.put<ApiResponse<any>>(`/api/v1/telephony-profiles/${id}`, data),
+
+  delete: (id: string) =>
+    api.delete<ApiResponse<{ message: string }>>(`/api/v1/telephony-profiles/${id}`),
+};
+
+// ── AI Agent API ──────────────────────────────────────────────────────────────
+
+export const aiAgentApi = {
+  getAll: (params?: { status?: string; isEnabled?: boolean; limit?: number }) =>
+    api.get<ApiResponse<any>>('/ai-agents', { params }),
+
+  getById: (id: string) =>
+    api.get<ApiResponse<any>>(`/ai-agents/${id}`),
+};
+
+// ── Voice Library API ─────────────────────────────────────────────────────────
+
+export const voiceLibraryApi = {
+  getAll: (params?: { language?: string; gender?: string }) =>
+    api.get<ApiResponse<any[]>>('/api/v1/voice-studio/voices', { params }),
+};
+
+// ── Knowledge Base API ────────────────────────────────────────────────────────
+
+export const knowledgeBaseApi = {
+  getAll: (params?: { search?: string; isActive?: boolean; limit?: number }) =>
+    api.get<ApiResponse<any>>('/knowledge-base', { params }),
+};
+
+// ── Campaign Contacts Upload API ──────────────────────────────────────────────
+
+export const campaignContactsApi = {
+  uploadFile: (campaignId: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post<ApiResponse<{ uploadId: string; status: string; message: string }>>(
+      `/api/v1/campaigns/${campaignId}/contacts/upload`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+  },
+
+  getUploadStatus: (campaignId: string, uploadId: string) =>
+    api.get<ApiResponse<any>>(`/api/v1/campaigns/${campaignId}/contacts/uploads/${uploadId}`),
+
+  getUploads: (campaignId: string) =>
+    api.get<ApiResponse<any[]>>(`/api/v1/campaigns/${campaignId}/contacts/uploads`),
+
+  getStatistics: (campaignId: string) =>
+    api.get<ApiResponse<any>>(`/api/v1/campaigns/${campaignId}/contacts/statistics`),
+
+  downloadTemplate: () =>
+    api.get('/api/v1/campaigns/template/contacts/template', { responseType: 'blob' }),
+};
+

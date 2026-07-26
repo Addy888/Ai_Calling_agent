@@ -28,6 +28,16 @@ export class CampaignService {
       }
     }
 
+    // Validate telephony profile if provided
+    if (data.telephonyProfileId) {
+      const telephonyProfile = await this.prisma.telephonyProfile.findFirst({
+        where: { id: data.telephonyProfileId, companyId, isActive: true, deletedAt: null },
+      });
+      if (!telephonyProfile) {
+        throw new BadRequestException('Invalid telephony profile selected');
+      }
+    }
+
     const campaign = await this.prisma.campaign.create({
       data: {
         name: data.name,
@@ -36,6 +46,7 @@ export class CampaignService {
         scriptId: data.scriptId,
         promptId: data.promptId,
         voiceId: data.voiceId,
+        telephonyProfileId: data.telephonyProfileId,
         settings: data.settings,
         companyId,
         userId,
@@ -46,7 +57,16 @@ export class CampaignService {
         user: { select: { id: true, firstName: true, lastName: true } },
         script: { select: { id: true, name: true, version: true } },
         prompt: { select: { id: true, name: true, version: true } },
-        _count: { select: { contacts: true, calls: true } },
+        telephonyProfile: {
+          select: {
+            id: true,
+            name: true,
+            provider: true,
+            callerNumber: true,
+            isDefault: true,
+          },
+        },
+        _count: { select: { contacts: true, calls: true, campaignContacts: true } },
       },
     });
 

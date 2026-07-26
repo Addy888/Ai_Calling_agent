@@ -1,132 +1,322 @@
-# 🚀 AI Calling Agent - Quick Start
+# Quick Start - Campaign Workflow Redesign
 
-> Get your AI calling system running in 10 minutes!
+## 🚀 Getting Started
 
-## ⚡ Super Quick Start
+### 1. Fix TypeScript Compilation Errors
 
-```bash
-# 1. Install everything
-npm install && cd apps/api && npm install twilio openai xlsx && cd ../..
+```powershell
+# Stop your dev server first (Ctrl+C)
 
-# 2. Configure
-copy .env.example .env
-# Edit .env and add your API keys
+# Clean build cache
+.\restart-api-dev.ps1
 
-# 3. Setup database
-npm run db:generate && npm run db:migrate
+# Rebuild
+cd apps/api
+npm run build
 
-# 4. Create storage
-mkdir storage\recordings storage\transcripts
-
-# 5. Run
+# Restart dev server
 npm run dev
 ```
 
-## 🔑 Required API Keys
-
-Add these to `.env`:
-
-```env
-OPENAI_API_KEY=sk-...              # Get from platform.openai.com
-ELEVENLABS_API_KEY=...             # Get from elevenlabs.io
-TWILIO_ACCOUNT_SID=AC...           # Get from console.twilio.com
-TWILIO_AUTH_TOKEN=...              # Get from console.twilio.com
-TWILIO_PHONE_NUMBER=+1...          # Get from console.twilio.com
-DATABASE_URL=mysql://root:pass@localhost:3306/ai_calling_agent
-```
-
-## 📞 Make Your First Call
-
-```bash
-# Windows PowerShell
-$API = "http://localhost:3001/api/v1"
-
-# 1. Create campaign
-$c = (Invoke-RestMethod "$API/campaigns" -Method POST -Body '{"companyId":"1","userId":"1","name":"Test"}' -ContentType "application/json").id
-
-# 2. Upload script
-"Hello! AI calling." | Out-File script.txt
-Invoke-RestMethod "$API/campaigns/$c/script/upload" -Method POST -Form @{file=Get-Item script.txt}
-
-# 3. Upload contacts
-"firstName,lastName,phone`nJohn,Doe,+1234567890" | Out-File contacts.csv
-Invoke-RestMethod "$API/campaigns/$c/contacts/upload" -Method POST -Form @{file=Get-Item contacts.csv}
-
-# 4. Start!
-Invoke-RestMethod "$API/campaigns/$c/start" -Method POST -Body '{"concurrentCalls":1}' -ContentType "application/json"
-
-# 5. Check status
-Invoke-RestMethod "$API/campaigns/$c/status"
-```
-
-## 🧪 Test Everything
+### 2. Apply Database Migration
 
 ```powershell
-.\test-calling-mvp.ps1
+# Generate Prisma client
+npm run db:generate
+
+# Apply migration
+npm run db:migrate
 ```
 
-## 🔧 Twilio Local Setup
+The migration will create:
+- `telephony_profiles` table
+- `campaign_contacts` table  
+- `campaign_uploads` table
+- Update `campaigns` table
+
+### 3. Test New API Endpoints
+
+#### A. Get Telephony Profiles
+```bash
+curl http://localhost:3000/api/v1/telephony-profiles \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+#### B. Upload Contact Template
+```bash
+curl http://localhost:3000/api/v1/campaigns/CAMPAIGN_ID/contacts/template \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -o template.csv
+```
+
+---
+
+## 📖 Key Documents
+
+| Document | Purpose |
+|----------|---------|
+| **CAMPAIGN_WORKFLOW_REDESIGN.md** | Complete implementation details, database schema, API reference |
+| **FRONTEND_INTEGRATION_GUIDE.md** | React components, TypeScript types, API client functions |
+| **FIX_TYPESCRIPT_ERRORS.md** | Troubleshooting TypeScript compilation issues |
+
+---
+
+## 🎯 New Workflow Summary
+
+### Before (OLD - REMOVED)
+```
+1. Create Contacts manually
+2. Go to Campaign
+3. Click "Assign Contacts"
+4. Select contacts
+5. Save
+```
+
+### After (NEW - IMPLEMENTED)
+```
+1. Select Telephony Profile (GSM Gateway + SIM)
+2. Upload Contact File (CSV/XLSX)
+3. Start Campaign
+```
+
+---
+
+## 🏗️ Architecture Overview
+
+```
+┌─────────────────────────────────────────────────┐
+│           Campaign Creation UI                  │
+│  ┌──────────────────────────────────────────┐  │
+│  │ 1. Campaign Details                      │  │
+│  │ 2. AI Configuration (Script/Prompt)     │  │
+│  │ 3. Telephony Profile Selector ⭐ NEW    │  │
+│  │ 4. Contact File Upload ⭐ NEW           │  │
+│  └──────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────────┐
+│              Backend Processing                 │
+│  ┌──────────────────────────────────────────┐  │
+│  │ TelephonyProfileService                  │  │
+│  │  - Validate GSM Gateway                  │  │
+│  │  - Verify SIM card active                │  │
+│  │  - Match caller number                   │  │
+│  └──────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────┐  │
+│  │ ContactUploadService                     │  │
+│  │  - Parse CSV/XLSX                        │  │
+│  │  - Validate contacts                     │  │
+│  │  - Check duplicates                      │  │
+│  │  - Batch insert (500 at a time)         │  │
+│  └──────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────────┐
+│             Call Execution                      │
+│  ┌──────────────────────────────────────────┐  │
+│  │ CampaignExecutionService                 │  │
+│  │  - Load campaign + telephony profile     │  │
+│  │  - Load campaign contacts                │  │
+│  │  - Create call queue                     │  │
+│  └──────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────┐  │
+│  │ QueueExecutionService                    │  │
+│  │  - Process contacts in batches          │  │
+│  │  - Respect concurrent call limits       │  │
+│  └──────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────┐  │
+│  │ CallOrchestratorService                  │  │
+│  │  - Initiate call via GSM Gateway        │  │
+│  │  - Use selected SIM card                │  │
+│  │  - Real caller ID (not spoofed)         │  │
+│  └──────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────────┐
+│          Asterisk / FreeSWITCH                  │
+│            GSM Gateway                          │
+│         Physical SIM Card (7220XXXXXX)          │
+└─────────────────────────────────────────────────┘
+```
+
+---
+
+## 📋 API Endpoints Added
+
+### Telephony Profiles
+```
+POST   /api/v1/telephony-profiles              Create profile
+GET    /api/v1/telephony-profiles              List profiles
+GET    /api/v1/telephony-profiles/default      Get default
+GET    /api/v1/telephony-profiles/gateways     Get gateways
+GET    /api/v1/telephony-profiles/:id          Get by ID
+PUT    /api/v1/telephony-profiles/:id          Update
+DELETE /api/v1/telephony-profiles/:id          Delete
+```
+
+### Campaign Contacts
+```
+POST   /api/v1/campaigns/:id/contacts/upload       Upload file
+GET    /api/v1/campaigns/:id/contacts/uploads      List uploads
+GET    /api/v1/campaigns/:id/contacts/uploads/:id  Upload status
+GET    /api/v1/campaigns/:id/contacts/template     Download template
+GET    /api/v1/campaigns/:id/contacts/statistics   Get stats
+GET    /api/v1/campaigns/:id/contacts              List contacts
+GET    /api/v1/campaigns/:id/contacts/:contactId   Get contact
+DELETE /api/v1/campaigns/:id/contacts/:contactId   Delete contact
+POST   /api/v1/campaigns/:id/contacts/bulk-delete  Bulk delete
+```
+
+---
+
+## 🧪 Testing Steps
+
+### 1. Create Telephony Profile
+
+```json
+POST /api/v1/telephony-profiles
+{
+  "name": "Primary GSM Profile",
+  "provider": "GSM_GATEWAY",
+  "gatewayId": "gateway-uuid",
+  "simId": "sim-uuid",
+  "callerNumber": "7220XXXXXX",
+  "isDefault": true
+}
+```
+
+### 2. Create Campaign
+
+```json
+POST /api/v1/campaigns
+{
+  "name": "Test Campaign",
+  "telephonyProfileId": "profile-uuid",
+  "scriptId": "script-uuid",
+  "promptId": "prompt-uuid"
+}
+```
+
+### 3. Upload Contacts
 
 ```bash
-# Install ngrok
-npm install -g ngrok
-
-# Expose local server
-ngrok http 3001
-
-# Update .env
-API_BASE_URL=https://YOUR-NGROK-URL.ngrok.io
-
-# Configure Twilio webhooks to point to:
-https://YOUR-NGROK-URL.ngrok.io/api/v1/webhooks/twilio/call
-https://YOUR-NGROK-URL.ngrok.io/api/v1/webhooks/twilio/status
+curl -X POST http://localhost:3000/api/v1/campaigns/CAMPAIGN_ID/contacts/upload \
+  -H "Authorization: Bearer TOKEN" \
+  -F "file=@contacts.csv"
 ```
 
-## 📚 Full Docs
+### 4. Check Upload Status
 
-- **Installation**: [INSTALL.md](./INSTALL.md)
-- **Setup Guide**: [CALLING_MVP_SETUP.md](./CALLING_MVP_SETUP.md)
-- **API Docs**: [API_DOCUMENTATION.md](./API_DOCUMENTATION.md)
-- **Complete Info**: [MVP_COMPLETE.md](./MVP_COMPLETE.md)
-
-## ✅ Success Check
-
-Your system works if you can:
-- ✅ Create campaign: `POST /campaigns`
-- ✅ Upload files: `POST /campaigns/:id/script/upload`
-- ✅ Start campaign: `POST /campaigns/:id/start`
-- ✅ See status: `GET /campaigns/:id/status`
-- ✅ Get analytics: `GET /campaigns/:id/analytics`
-
-## 🆘 Quick Fixes
-
-**Port in use?**
-```env
-API_PORT=3002
-```
-
-**Database error?**
 ```bash
-mysql -u root -p -e "CREATE DATABASE ai_calling_agent"
+curl http://localhost:3000/api/v1/campaigns/CAMPAIGN_ID/contacts/uploads/UPLOAD_ID \
+  -H "Authorization: Bearer TOKEN"
 ```
 
-**Module not found?**
+### 5. View Statistics
+
 ```bash
-npm install && cd apps/api && npm install
+curl http://localhost:3000/api/v1/campaigns/CAMPAIGN_ID/contacts/statistics \
+  -H "Authorization: Bearer TOKEN"
 ```
 
-**Twilio not working?**
-- Check ngrok is running
-- Verify webhook URLs in Twilio console
-- Check phone number format: +1234567890
+---
 
-## 🎯 URLs
+## 📊 Sample CSV Format
 
-- **Web**: http://localhost:3000
-- **API**: http://localhost:3001
-- **API Docs**: http://localhost:3001/api/docs
-- **Health**: http://localhost:3001/api/v1/calling/health
+```csv
+firstName,lastName,phone,email,city,state,language
+Rajesh,Kumar,9876543210,rajesh@example.com,Mumbai,Maharashtra,hi
+Priya,Sharma,9876543211,priya@example.com,Delhi,Delhi,en
+Amit,Patel,9876543212,amit@example.com,Ahmedabad,Gujarat,gu
+```
 
-## 🎉 You're Ready!
+**Flexible Naming Supported:**
+- `firstName`, `first_name`, `fname`, `First Name`
+- `lastName`, `last_name`, `lname`, `Last Name`
+- `phone`, `phoneNumber`, `mobile`, `Phone`, `Mobile`
 
-Start building AI-powered calling campaigns now! 🚀
+---
+
+## ✅ Checklist
+
+### Backend
+- [x] Database schema updated
+- [x] Migration created
+- [x] Telephony Profile module
+- [x] Campaign Contacts module
+- [x] Campaign service updated
+- [x] App module configured
+- [x] Storage directories created
+- [ ] TypeScript compilation fixed (see FIX_TYPESCRIPT_ERRORS.md)
+- [ ] Dev server restarted
+
+### Frontend (TODO)
+- [ ] Telephony Profile selector component
+- [ ] Contact file upload widget
+- [ ] Upload progress indicator
+- [ ] Validation error display
+- [ ] Campaign creation form updated
+- [ ] Contact list view
+- [ ] Statistics dashboard
+
+### Testing
+- [ ] Create telephony profile
+- [ ] Upload contact file
+- [ ] Validate contacts
+- [ ] Create campaign with profile
+- [ ] Start campaign
+- [ ] Verify calls use GSM SIM
+
+---
+
+## 🆘 Troubleshooting
+
+### TypeScript Errors (TS6307)
+→ See **FIX_TYPESCRIPT_ERRORS.md**
+
+### "Table does not exist" Error
+```powershell
+npm run db:migrate
+```
+
+### "Upload directory not found"
+```powershell
+New-Item -Path "storage\uploads\contacts" -ItemType Directory -Force
+```
+
+### "Telephony profile not found"
+You need to create a telephony profile first before creating campaigns.
+
+### "No active SIM card"
+Ensure the SIM card is:
+1. Registered in the system
+2. `isActive = true`
+3. `status = 'ACTIVE'`
+4. Belongs to an active gateway
+
+---
+
+## 📞 Next Steps
+
+1. **Fix TypeScript compilation** (see FIX_TYPESCRIPT_ERRORS.md)
+2. **Apply database migration** (`npm run db:migrate`)
+3. **Test API endpoints** (use Postman/curl)
+4. **Implement frontend** (see FRONTEND_INTEGRATION_GUIDE.md)
+5. **Configure GSM Gateway** (physical hardware setup)
+6. **Test end-to-end workflow**
+
+---
+
+## 📚 Additional Resources
+
+- **Complete API Reference:** CAMPAIGN_WORKFLOW_REDESIGN.md
+- **React Components:** FRONTEND_INTEGRATION_GUIDE.md
+- **TypeScript Issues:** FIX_TYPESCRIPT_ERRORS.md
+- **Database Schema:** database/prisma/schema.prisma
+- **Migration:** database/prisma/migrations/20260726073912_*
+
+---
+
+**Status:** ✅ Backend Complete | ⚠️ TypeScript Fix Required | 📋 Frontend Pending
+
+**Implementation Date:** July 26, 2026

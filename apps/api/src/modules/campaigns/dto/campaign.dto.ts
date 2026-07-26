@@ -49,12 +49,15 @@ export class CreateCampaignDto {
   @IsOptional()
   voiceId?: string;
 
+  @ApiPropertyOptional({ description: 'Telephony profile (GSM Gateway + SIM configuration)' })
+  @IsUUID()
+  @IsOptional()
+  telephonyProfileId?: string;
+
   @ApiPropertyOptional({ enum: CampaignStatus, default: CampaignStatus.DRAFT })
   @IsEnum(CampaignStatus)
   @IsOptional()
   status?: CampaignStatus;
-
-
 
   @ApiPropertyOptional({ example: { callsPerDay: 100, retryAttempts: 3 } })
   @IsObject()

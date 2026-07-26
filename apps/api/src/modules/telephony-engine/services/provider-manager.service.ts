@@ -9,6 +9,7 @@ import { ProviderRegistryService } from './provider-registry.service';
 import { TwilioProvider } from '../providers/twilio.provider';
 import { ExotelProvider } from '../providers/exotel.provider';
 import { PlivoProvider } from '../providers/plivo.provider';
+import { AsteriskProvider } from '../providers/asterisk.provider';
 import { ProviderType } from '../enums/call-state.enum';
 import { ProviderConfig } from '../interfaces/telephony-provider.interface';
 
@@ -22,6 +23,7 @@ export class ProviderManagerService implements OnModuleInit {
     private readonly twilioProvider: TwilioProvider,
     private readonly exotelProvider: ExotelProvider,
     private readonly plivoProvider: PlivoProvider,
+    private readonly asteriskProvider: AsteriskProvider,
   ) {}
 
   async onModuleInit() {
@@ -43,6 +45,7 @@ export class ProviderManagerService implements OnModuleInit {
     this.providerRegistry.registerProvider(this.twilioProvider);
     this.providerRegistry.registerProvider(this.exotelProvider);
     this.providerRegistry.registerProvider(this.plivoProvider);
+    this.providerRegistry.registerProvider(this.asteriskProvider);
 
     this.logger.log(`Registered ${this.providerRegistry.getProviderCount()} providers`);
   }
@@ -117,6 +120,18 @@ export class ProviderManagerService implements OnModuleInit {
           apiKey: this.configService.get<string>('PLIVO_AUTH_ID'),
           authToken: this.configService.get<string>('PLIVO_AUTH_TOKEN'),
           phoneNumber: this.configService.get<string>('PLIVO_PHONE_NUMBER'),
+        };
+
+      case ProviderType.ASTERISK:
+        return {
+          apiEndpoint: this.configService.get<string>('ASTERISK_HOST', 'localhost'),
+          additionalConfig: {
+            port: this.configService.get<number>('ASTERISK_AMI_PORT', 5038),
+            username: this.configService.get<string>('ASTERISK_AMI_USERNAME', 'admin'),
+            secret: this.configService.get<string>('ASTERISK_AMI_SECRET'),
+            context: this.configService.get<string>('ASTERISK_CONTEXT', 'ai-calling'),
+            extension: this.configService.get<string>('ASTERISK_EXTENSION', 's'),
+          },
         };
 
       default:

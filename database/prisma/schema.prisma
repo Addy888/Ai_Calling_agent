@@ -196,32 +196,40 @@ model RefreshToken {
 // ============================================
 
 model Campaign {
-  id          String         @id @default(uuid())
-  companyId   String
-  userId      String
-  name        String         @db.VarChar(255)
-  description String?        @db.Text
-  status      CampaignStatus @default(DRAFT)
-  scriptId    String?
-  promptId    String?
-  voiceId     String?
-  startDate   DateTime?
-  endDate     DateTime?
-  timezone    String?        @db.VarChar(100)
-  settings    Json?
-  createdBy   String?        @db.VarChar(255)
-  updatedBy   String?        @db.VarChar(255)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  deletedAt   DateTime?
+  id                 String         @id @default(uuid())
+  companyId          String
+  userId             String
+  name               String         @db.VarChar(255)
+  description        String?        @db.Text
+  status             CampaignStatus @default(DRAFT)
+  scriptId           String?
+  promptId           String?
+  voiceId            String?
+  telephonyProfileId String?        // GSM Gateway + SIM selection
+  concurrentCalls    Int            @default(1)
+  callDelay          Int            @default(5) // seconds between calls
+  maxRetries         Int            @default(3)
+  retryDelay         Int            @default(300) // 5 minutes
+  startDate          DateTime?
+  endDate            DateTime?
+  timezone           String?        @db.VarChar(100)
+  settings           Json?
+  createdBy          String?        @db.VarChar(255)
+  updatedBy          String?        @db.VarChar(255)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  deletedAt          DateTime?
 
-  company Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  script  Script?        @relation(fields: [scriptId], references: [id], onDelete: SetNull)
-  prompt  Prompt?        @relation(fields: [promptId], references: [id], onDelete: SetNull)
-  voice   VoiceProfile?  @relation(fields: [voiceId], references: [id], onDelete: SetNull)
-  calls   Call[]
-  contacts Contact[]
+  company           Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  script            Script?           @relation(fields: [scriptId], references: [id], onDelete: SetNull)
+  prompt            Prompt?           @relation(fields: [promptId], references: [id], onDelete: SetNull)
+  voice             VoiceProfile?     @relation(fields: [voiceId], references: [id], onDelete: SetNull)
+  telephonyProfile  TelephonyProfile? @relation(fields: [telephonyProfileId], references: [id], onDelete: SetNull)
+  calls             Call[]
+  contacts          Contact[]         // Keep for backward compatibility
+  campaignContacts  CampaignContact[] // New: uploaded contacts specific to campaign
+  campaignUploads   CampaignUpload[]  // Track file uploads
 
   @@index([companyId])
   @@index([userId])
@@ -229,6 +237,7 @@ model Campaign {
   @@index([scriptId])
   @@index([promptId])
   @@index([voiceId])
+  @@index([telephonyProfileId])
   @@index([createdAt])
   @@map("campaigns")
 }
@@ -6164,4 +6173,331 @@ enum CheckpointConfigAction {
   RECOVERY_POLICY_UPDATED
   STORAGE_UPDATED
   RETENTION_UPDATED
+}
+
+
+// ============================================
+// GSM GATEWAY & SIM MANAGEMENT - Phase 5.1
+// ============================================
+
+model GSMGateway {
+  id            String    @id @default(uuid())
+  companyId     String
+  name          String    @db.VarChar(255)
+  ipAddress     String    @db.VarChar(45)
+  port          Int       @default(5060)
+  username      String?   @db.VarChar(100)
+  password      String?   @db.VarChar(255)
+  model         String    @db.VarChar(100) // "Dinstar", "Yeastar", "OpenVox", "Generic"
+  manufacturer  String?   @db.VarChar(100)
+  firmware      String?   @db.VarChar(100)
+  totalPorts    Int       // 4, 8, 16, 32
+  activePorts   Int       @default(0)
+  status        GatewayStatus @default(ACTIVE)
+  isOnline      Boolean   @default(false)
+  lastSeenAt    DateTime?
+  metadata      Json?
+  notes         String?   @db.Text
+  createdBy     String?   @db.VarChar(255)
+  updatedBy     String?   @db.VarChar(255)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+  
+  sims          SIMCard[]
+  
+  @@index([companyId])
+  @@index([status])
+  @@index([isOnline])
+  @@index([ipAddress])
+  @@index([createdAt])
+  @@map("gsm_gateways")
+}
+
+enum GatewayStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+  ERROR
+}
+
+model SIMCard {
+  id              String        @id @default(uuid())
+  gatewayId       String
+  companyId       String
+  simNumber       String        @db.VarChar(20) // Phone number
+  operator        String        @db.VarChar(50) // "Jio", "Airtel", "Vi", "BSNL"
+  operatorCode    String?       @db.VarChar(10) // MCC-MNC code
+  portNumber      Int           // 1, 2, 3, 4...
+  imsi            String?       @db.VarChar(20)  // International Mobile Subscriber Identity
+  iccid           String?       @db.VarChar(25)  // Integrated Circuit Card ID
+  status          SIMStatus     @default(ACTIVE)
+  signal          Int?          // Signal strength 0-100
+  balance         Float?
+  dataBalance     Float?        // MB
+  lastUsed        DateTime?
+  lastChecked     DateTime?
+  callsToday      Int           @default(0)
+  callsThisWeek   Int           @default(0)
+  callsThisMonth  Int           @default(0)
+  dailyLimit      Int           @default(100)
+  weeklyLimit     Int           @default(700)
+  monthlyLimit    Int           @default(3000)
+  isActive        Boolean       @default(true)
+  isPreferred     Boolean       @default(false)
+  priority        Int           @default(0) // Higher = more preferred
+  metadata        Json?
+  notes           String?       @db.Text
+  createdBy       String?       @db.VarChar(255)
+  updatedBy       String?       @db.VarChar(255)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deletedAt       DateTime?
+  
+  gateway         GSMGateway    @relation(fields: [gatewayId], references: [id], onDelete: Cascade)
+  callLogs        SIMCallLog[]
+  
+  @@unique([gatewayId, portNumber])
+  @@unique([companyId, simNumber])
+  @@index([companyId])
+  @@index([gatewayId])
+  @@index([status])
+  @@index([simNumber])
+  @@index([operator])
+  @@index([isActive])
+  @@index([isPreferred])
+  @@index([priority])
+  @@index([lastUsed])
+  @@map("sim_cards")
+}
+
+enum SIMStatus {
+  ACTIVE
+  INACTIVE
+  BUSY
+  ERROR
+  LOW_BALANCE
+  LIMIT_EXCEEDED
+  BLOCKED
+}
+
+model SIMCallLog {
+  id              String    @id @default(uuid())
+  simId           String
+  companyId       String
+  callSid         String?   @db.VarChar(255)
+  campaignId      String?
+  contactId       String?
+  destinationNumber String  @db.VarChar(20)
+  callDirection   String    @db.VarChar(20) // "outbound", "inbound"
+  callStatus      String    @db.VarChar(50)
+  callDuration    Int?      // seconds
+  callCost        Float?    // in rupees
+  startTime       DateTime?
+  endTime         DateTime?
+  errorMessage    String?   @db.Text
+  metadata        Json?
+  createdAt       DateTime  @default(now())
+  
+  sim             SIMCard   @relation(fields: [simId], references: [id], onDelete: Cascade)
+  
+  @@index([simId])
+  @@index([companyId])
+  @@index([callSid])
+  @@index([campaignId])
+  @@index([contactId])
+  @@index([callStatus])
+  @@index([startTime])
+  @@index([createdAt])
+  @@map("sim_call_logs")
+}
+
+model SIMUsageStats {
+  id              String    @id @default(uuid())
+  simId           String
+  companyId       String
+  date            DateTime  @db.Date
+  totalCalls      Int       @default(0)
+  successfulCalls Int       @default(0)
+  failedCalls     Int       @default(0)
+  totalDuration   Int       @default(0) // seconds
+  totalCost       Float     @default(0.0)
+  averageSignal   Float?
+  peakHourCalls   Json?     // { "00": 0, "01": 0, ... "23": 5 }
+  metadata        Json?
+  createdAt       DateTime  @default(now())
+  
+  @@unique([simId, date])
+  @@index([simId])
+  @@index([companyId])
+  @@index([date])
+  @@index([totalCalls])
+  @@index([createdAt])
+  @@map("sim_usage_stats")
+}
+
+model GatewayHealthLog {
+  id          String    @id @default(uuid())
+  gatewayId   String
+  companyId   String
+  status      String    @db.VarChar(50)
+  isOnline    Boolean
+  activePorts Int       @default(0)
+  temperature Float?    // Gateway device temperature
+  uptime      Int?      // seconds
+  cpuUsage    Float?    // percentage
+  memoryUsage Float?    // percentage
+  errors      Json?
+  metadata    Json?
+  checkedAt   DateTime  @default(now())
+  
+  @@index([gatewayId])
+  @@index([companyId])
+  @@index([status])
+  @@index([isOnline])
+  @@index([checkedAt])
+  @@map("gateway_health_logs")
+}
+
+// ============================================
+// TELEPHONY PROFILE MANAGEMENT - Phase 5.2
+// ============================================
+
+model TelephonyProfile {
+  id           String            @id @default(uuid())
+  companyId    String
+  name         String            @db.VarChar(255)
+  description  String?           @db.Text
+  provider     TelephonyProvider @default(GSM_GATEWAY)
+  gatewayId    String?           // For GSM Gateway provider
+  simId        String?           // Selected SIM for this profile
+  callerNumber String            @db.VarChar(20) // The outbound caller ID
+  isDefault    Boolean           @default(false)
+  isActive     Boolean           @default(true)
+  config       Json?             // Provider-specific configuration
+  metadata     Json?
+  createdBy    String?           @db.VarChar(255)
+  updatedBy    String?           @db.VarChar(255)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  deletedAt    DateTime?
+
+  campaigns    Campaign[]
+
+  @@index([companyId])
+  @@index([provider])
+  @@index([gatewayId])
+  @@index([simId])
+  @@index([callerNumber])
+  @@index([isDefault])
+  @@index([isActive])
+  @@map("telephony_profiles")
+}
+
+enum TelephonyProvider {
+  GSM_GATEWAY
+  GENERIC_SIP
+  TWILIO
+  EXOTEL
+  KNOWLARITY
+  MYOPERATOR
+  OZONETEL
+  AIRTEL_IQ
+}
+
+// ============================================
+// CAMPAIGN CONTACT MANAGEMENT - Phase 5.3
+// ============================================
+
+model CampaignUpload {
+  id               String             @id @default(uuid())
+  campaignId       String
+  companyId        String
+  fileName         String             @db.VarChar(500)
+  originalName     String             @db.VarChar(500)
+  filePath         String             @db.VarChar(1000)
+  fileType         String             @db.VarChar(50) // CSV, XLSX, XLS
+  fileSize         BigInt
+  totalRows        Int                @default(0)
+  validRows        Int                @default(0)
+  invalidRows      Int                @default(0)
+  duplicateRows    Int                @default(0)
+  processedRows    Int                @default(0)
+  status           UploadStatus       @default(PENDING)
+  validationErrors Json?              // Array of validation errors
+  uploadedBy       String?            @db.VarChar(255)
+  processedAt      DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  campaign         Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contacts         CampaignContact[]
+
+  @@index([campaignId])
+  @@index([companyId])
+  @@index([status])
+  @@index([uploadedBy])
+  @@index([createdAt])
+  @@map("campaign_uploads")
+}
+
+enum UploadStatus {
+  PENDING
+  VALIDATING
+  VALID
+  INVALID
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model CampaignContact {
+  id            String    @id @default(uuid())
+  campaignId    String
+  uploadId      String?   // Link to upload batch
+  companyId     String
+  firstName     String    @db.VarChar(100)
+  lastName      String    @db.VarChar(100)
+  fullName      String    @db.VarChar(255)
+  phone         String    @db.VarChar(50)
+  countryCode   String?   @default("+91") @db.VarChar(10)
+  email         String?   @db.VarChar(255)
+  language      String    @default("en") @db.VarChar(10)
+  city          String?   @db.VarChar(100)
+  state         String?   @db.VarChar(100)
+  country       String?   @db.VarChar(100)
+  customFields  Json?     // Additional CSV columns
+  status        ContactCallStatus @default(PENDING)
+  callAttempts  Int       @default(0)
+  lastCallAt    DateTime?
+  lastCallStatus String?  @db.VarChar(50)
+  notes         String?   @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  campaign      Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  upload        CampaignUpload?  @relation(fields: [uploadId], references: [id], onDelete: SetNull)
+
+  @@index([campaignId])
+  @@index([uploadId])
+  @@index([companyId])
+  @@index([phone])
+  @@index([email])
+  @@index([status])
+  @@index([createdAt])
+  @@map("campaign_contacts")
+}
+
+enum ContactCallStatus {
+  PENDING
+  QUEUED
+  CALLING
+  CONNECTED
+  COMPLETED
+  FAILED
+  BUSY
+  NO_ANSWER
+  INVALID_NUMBER
+  DO_NOT_CALL
+  SKIPPED
 }

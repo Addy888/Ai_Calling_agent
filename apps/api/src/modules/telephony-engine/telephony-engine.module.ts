@@ -7,6 +7,9 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 
+// Import GSM Gateway Module
+// import { GSMGatewayModule } from '../gsm-gateway/gsm-gateway.module'; // TODO: Fix compilation errors
+
 // Controllers
 import {
   TelephonyEngineController,
@@ -29,9 +32,10 @@ import { PipelineIntegrationService } from './services/pipeline-integration.serv
 import { TwilioProvider } from './providers/twilio.provider';
 import { ExotelProvider } from './providers/exotel.provider';
 import { PlivoProvider } from './providers/plivo.provider';
+import { AsteriskProvider } from './providers/asterisk.provider';
 
 @Module({
-  imports: [ConfigModule, EventEmitterModule],
+  imports: [ConfigModule, EventEmitterModule], // GSMGatewayModule, // TODO: Fix compilation errors
   controllers: [TelephonyEngineController, TelephonyWebhookController],
   providers: [
     // Main Manager
@@ -52,6 +56,7 @@ import { PlivoProvider } from './providers/plivo.provider';
     TwilioProvider,
     ExotelProvider,
     PlivoProvider,
+    AsteriskProvider,
   ],
   exports: [
     TelephonyManagerService,

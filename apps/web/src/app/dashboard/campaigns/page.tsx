@@ -2,18 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { DataTable } from '@/components/ui/data-table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, Search, Play, Pause, Edit, Trash2, Copy, Archive, RotateCcw, Eye } from 'lucide-react';
 import { campaignApi } from '@/lib/api';
 import { Campaign, CampaignStatus, CampaignFilterDto } from '@/types';
 import { formatDate, formatDateTime } from '@/lib/utils';
-import { CreateCampaignForm } from './create-campaign-form';
 import { toast } from '@/components/ui/use-toast';
 
 const statusColors: Record<CampaignStatus, string> = {
@@ -36,7 +34,6 @@ export default function CampaignsPage() {
     total: 0,
     totalPages: 0,
   });
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
 
   const loadCampaigns = async () => {
     try {
@@ -243,27 +240,12 @@ export default function CampaignsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Campaigns</h2>
-          <p className="text-muted-foreground">Manage your calling campaigns</p>
+          <p className="text-muted-foreground">Manage your AI calling campaigns</p>
         </div>
-        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Campaign
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Create New Campaign</DialogTitle>
-            </DialogHeader>
-            <CreateCampaignForm
-              onSuccess={() => {
-                setShowCreateDialog(false);
-                loadCampaigns();
-              }}
-            />
-          </DialogContent>
-        </Dialog>
+        <Button onClick={() => router.push('/dashboard/campaigns/create')}>
+          <Plus className="mr-2 h-4 w-4" />
+          Create Campaign
+        </Button>
       </div>
 
       <Card>
