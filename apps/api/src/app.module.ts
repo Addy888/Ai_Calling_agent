@@ -4,9 +4,11 @@ import { APP_FILTER, APP_INTERCEPTOR, APP_GUARD } from '@nestjs/core';
 
 // Common
 import { PrismaModule } from './common/prisma/prisma.module';
+import { CacheModule } from './common/cache/cache.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import redisConfig from './common/config/redis.config';
 
 // Modules
 import { AuthModule } from './modules/auth/auth.module';
@@ -61,6 +63,7 @@ import { CampaignContactsModule } from './modules/campaign-contacts/campaign-con
       isGlobal: true,
       envFilePath: ['.env.local', '.env'],
       cache: true,
+      load: [redisConfig],
     }),
     EventEmitterModule.forRoot({
       wildcard: true,
@@ -70,6 +73,7 @@ import { CampaignContactsModule } from './modules/campaign-contacts/campaign-con
       ignoreErrors: false,
     }),
     PrismaModule,
+    CacheModule,
     AuthModule,
     UsersModule,
     RolesModule,

@@ -5,6 +5,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { TokenBlacklistService } from './services/token-blacklist.service';
 import { PrismaModule } from '@/common/prisma/prisma.module';
 
 @Module({
@@ -24,8 +25,8 @@ import { PrismaModule } from '@/common/prisma/prisma.module';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
-  exports: [AuthService, JwtStrategy, PassportModule, JwtModule],
+  providers: [AuthService, JwtStrategy, TokenBlacklistService],
+  exports: [AuthService, JwtStrategy, TokenBlacklistService, PassportModule, JwtModule],
 })
 export class AuthModule {}
 

@@ -3,12 +3,15 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/common/prisma/prisma.service';
+import { TokenBlacklistService } from '../services/token-blacklist.service';
+import { Request } from 'express';
 
 export interface JwtPayload {
   sub: string;
   email: string;
   companyId: string;
   roles: string[];
+  tokenVersion?: number; // For token versioning
   iat?: number;
   exp?: number;
 }
@@ -17,16 +20,32 @@ export interface JwtPayload {
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     private readonly configService: ConfigService,
-    private readonly prisma: PrismaService
+    private readonly prisma: PrismaService,
+    private readonly tokenBlacklistService: TokenBlacklistService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
       secretOrKey: configService.get<string>('JWT_SECRET') || 'your-super-secret-jwt-key-change-this-in-production-use-at-least-32-characters',
+      passReqToCallback: true, // Pass request to validate method
     });
   }
 
-  async validate(payload: JwtPayload) {
+  async validate(request: Request, payload: JwtPayload) {
+    // Extract token from header
+    const authHeader = request.headers.authorization;
+    const token = authHeader?.replace('Bearer ', '') || '';
+
+    // Check if token is blacklisted
+    if (await this.tokenBlacklistService.isBlacklisted(token)) {
+      throw new UnauthorizedException('Token has been revoked');
+    }
+
+    // Check if all user tokens are blacklisted (e.g., after password change)
+    if (payload.iat && await this.tokenBlacklistService.areAllUserTokensBlacklisted(payload.sub, payload.iat)) {
+      throw new UnauthorizedException('Token has been invalidated');
+    }
+
     // Fetch user with roles and permissions
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
@@ -85,6 +104,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       permissions: Array.from(new Set(permissions)), // Remove duplicates
       isActive: user.isActive,
       emailVerified: user.emailVerified,
+      tokenIssuedAt: payload.iat,
     };
   }
 }

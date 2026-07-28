@@ -8,6 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '@/common/prisma/prisma.service';
+import { TokenBlacklistService } from './services/token-blacklist.service';
 import { LoginDto, RegisterDto } from './dto/auth.dto';
 
 @Injectable()
@@ -15,7 +16,8 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
+    private readonly tokenBlacklistService: TokenBlacklistService,
   ) {}
 
   async login(loginDto: LoginDto) {
@@ -235,7 +237,10 @@ export class AuthService {
     }
   }
 
-  async logout(userId: string, refreshToken?: string) {
+  async logout(userId: string, accessToken: string, refreshToken?: string) {
+    // Blacklist the access token
+    await this.tokenBlacklistService.blacklistToken(accessToken, userId, 'logout');
+
     // Delete the specific refresh token if provided
     if (refreshToken) {
       await this.prisma.refreshToken.deleteMany({
