@@ -201,6 +201,7 @@ model Campaign {
   userId             String
   name               String         @db.VarChar(255)
   description        String?        @db.Text
+  objective          String?        @db.Text
   status             CampaignStatus @default(DRAFT)
   scriptId           String?
   promptId           String?
@@ -214,22 +215,24 @@ model Campaign {
   endDate            DateTime?
   timezone           String?        @db.VarChar(100)
   settings           Json?
+  aiConfig           Json?
   createdBy          String?        @db.VarChar(255)
   updatedBy          String?        @db.VarChar(255)
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
   deletedAt          DateTime?
 
-  company           Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  script            Script?           @relation(fields: [scriptId], references: [id], onDelete: SetNull)
-  prompt            Prompt?           @relation(fields: [promptId], references: [id], onDelete: SetNull)
-  voice             VoiceProfile?     @relation(fields: [voiceId], references: [id], onDelete: SetNull)
-  telephonyProfile  TelephonyProfile? @relation(fields: [telephonyProfileId], references: [id], onDelete: SetNull)
-  calls             Call[]
-  contacts          Contact[]         // Keep for backward compatibility
-  campaignContacts  CampaignContact[] // New: uploaded contacts specific to campaign
-  campaignUploads   CampaignUpload[]  // Track file uploads
+  company             Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  script              Script?              @relation(fields: [scriptId], references: [id], onDelete: SetNull)
+  prompt              Prompt?              @relation(fields: [promptId], references: [id], onDelete: SetNull)
+  voice               VoiceProfile?        @relation(fields: [voiceId], references: [id], onDelete: SetNull)
+  telephonyProfile    TelephonyProfile?    @relation(fields: [telephonyProfileId], references: [id], onDelete: SetNull)
+  calls               Call[]
+  contacts            Contact[]            // Keep for backward compatibility
+  campaignContacts    CampaignContact[]    // New: uploaded contacts specific to campaign
+  campaignUploads     CampaignUpload[]     // Track file uploads
+  conversationSessions ConversationSession[] // AI Conversation Engine sessions
 
   @@index([companyId])
   @@index([userId])
@@ -283,9 +286,10 @@ model Contact {
   createdBy     String?   @db.VarChar(255)
   updatedBy     String?   @db.VarChar(255)
 
-  companyRef  Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  campaignRef Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
-  calls       Call[]
+  companyRef           Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  campaignRef          Campaign?            @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  calls                Call[]
+  conversationSessions ConversationSession[] // AI Conversation Engine sessions
 
   @@unique([companyId, phone])
   @@unique([companyId, email])
@@ -338,6 +342,7 @@ model Prompt {
   id          String       @id @default(uuid())
   companyId   String
   name        String       @db.VarChar(255)
+  category    String?      @db.VarChar(100)
   description String?      @db.Text
   content     String       @db.LongText
   version     String       @default("1.0.0") @db.VarChar(20)
@@ -355,6 +360,7 @@ model Prompt {
 
   @@index([companyId])
   @@index([status])
+  @@index([category])
   @@index([createdAt])
   @@map("prompts")
 }
@@ -1211,6 +1217,70 @@ model CustomerMemory {
   @@index([lastConversationDate])
   @@index([nextFollowupDate])
   @@map("customer_memory")
+}
+
+// ConversationMessage - Individual messages in a conversation
+model ConversationMessage {
+  id              String   @id @default(uuid())
+  sessionId       String
+  role            MessageRole
+  content         String   @db.Text
+  language        String?  @db.VarChar(10)
+  confidence      Float?
+  emotion         String?  @db.VarChar(50)
+  intent          String?  @db.VarChar(100)
+  
+  sttLatency      Int?
+  llmLatency      Int?
+  ttsLatency      Int?
+  totalLatency    Int?
+  
+  audioUrl        String?  @db.VarChar(500)
+  audioDuration   Float?
+  
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  
+  session         ConversationSession @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
+  
+  @@index([sessionId])
+  @@index([role])
+  @@index([createdAt])
+  @@map("conversation_messages")
+}
+
+enum MessageRole {
+  CUSTOMER
+  AI
+  SYSTEM
+}
+
+// ConversationMemoryItem - AI memory storage (key-value pairs)
+model ConversationMemoryItem {
+  id          String     @id @default(uuid())
+  sessionId   String
+  type        MemoryType
+  key         String     @db.VarChar(255)
+  value       String     @db.Text
+  ttl         Int?
+  expiresAt   DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  
+  session     ConversationSession @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
+  
+  @@index([sessionId])
+  @@index([type])
+  @@index([key])
+  @@index([expiresAt])
+  @@map("conversation_memory_items")
+}
+
+enum MemoryType {
+  SHORT_TERM
+  SESSION
+  CUSTOMER
+  CONTEXT
 }
 
 enum LeadStatus {
@@ -2585,12 +2655,29 @@ model ConversationSession {
   startedAt             DateTime            @default(now())
   endedAt               DateTime?
   lastActivityAt        DateTime            @default(now())
+  lastActivityTime      DateTime            @default(now())
   totalDuration         Int?
+  duration              Int?
   conversationResult    ConversationResult?
   metadata              Json?
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
+  
+  // AI Engine fields
+  status                ConversationStatus? @default(ACTIVE)
+  turnCount             Int                 @default(0)
+  avgSttLatency         Float?
+  avgLlmLatency         Float?
+  avgTtsLatency         Float?
+  avgTotalLatency       Float?
+  intent                String?             @db.VarChar(100)
+  leadScore             Float?
+  emotion               String?             @db.VarChar(50)
+  summaryText           String?             @db.Text
 
+  // Relations
+  campaign              Campaign?           @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  contact               Contact?            @relation(fields: [contactId], references: [id], onDelete: SetNull)
   timeline              ConversationTimeline[]
   stateTransitions      ConversationStateTransition[]
   questions             ConversationQuestion[]
@@ -2598,6 +2685,8 @@ model ConversationSession {
   followUps             ConversationFollowUp[]
   summary               ConversationSummary?
   metrics               ConversationMetrics?
+  messages              ConversationMessage[]
+  memoryItems           ConversationMemoryItem[]
 
   @@index([sessionId])
   @@index([companyId])
@@ -2608,6 +2697,7 @@ model ConversationSession {
   @@index([isActive])
   @@index([startedAt])
   @@index([lastActivityAt])
+  @@index([status])
   @@map("conversation_sessions")
 }
 
@@ -2636,6 +2726,14 @@ enum ConversationResult {
   HUNG_UP
   COMPLETED
   FAILED
+}
+
+enum ConversationStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  FAILED
+  INTERRUPTED
 }
 
 model ConversationStateTransition {

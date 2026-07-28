@@ -12,8 +12,8 @@ import {
   HttpCode,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { TelephonyProfileService } from './telephony-profile.service';
 import { CreateTelephonyProfileDto, UpdateTelephonyProfileDto, TelephonyProfileFilterDto } from './dto/telephony-profile.dto';
 

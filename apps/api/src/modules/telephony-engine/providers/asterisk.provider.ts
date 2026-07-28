@@ -13,7 +13,7 @@
 
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as AsteriskManager from 'asterisk-manager';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   ITelephonyProvider,
   CallInitiationParams,
@@ -26,22 +26,17 @@ import {
   ProviderConfig,
 } from '../interfaces/telephony-provider.interface';
 import { CallDirection, CallState, ProviderType } from '../enums/call-state.enum';
-// TODO: Re-enable when GSM Gateway is fixed
-// import { SIMManagerService } from '../../gsm-gateway/services/sim-manager.service';
-// import { ChannelManagerService } from '../../gsm-gateway/services/channel-manager.service';
+import { GatewayManagerService } from '../services/gateway-manager.service';
+import { SIMManagerService } from '../services/sim-manager.service';
+import { ConnectionManagerService } from '../services/connection-manager.service';
 
 @Injectable()
 export class AsteriskProvider implements ITelephonyProvider, OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(AsteriskProvider.name);
-  private ami: any;
   private ready = false;
   private config: ProviderConfig;
   
   // Asterisk specific configuration
-  private host: string;
-  private port: number;
-  private username: string;
-  private secret: string;
   private context: string;
   private extension: string;
   
@@ -53,9 +48,10 @@ export class AsteriskProvider implements ITelephonyProvider, OnModuleInit, OnMod
 
   constructor(
     private readonly configService: ConfigService,
-    // TODO: Re-enable when GSM Gateway is fixed
-    // private readonly simManager: SIMManagerService,
-    // private readonly channelManager: ChannelManagerService,
+    private readonly gatewayManager: GatewayManagerService,
+    private readonly simManager: SIMManagerService,
+    private readonly connectionManager: ConnectionManagerService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async onModuleInit() {
@@ -63,10 +59,8 @@ export class AsteriskProvider implements ITelephonyProvider, OnModuleInit, OnMod
   }
 
   async onModuleDestroy() {
-    if (this.ami && this.ready) {
-      this.logger.log('Disconnecting from Asterisk AMI...');
-      await this.disconnect();
-    }
+    this.logger.log('Shutting down Asterisk Provider...');
+    this.ready = false;
   }
 
   getName(): string {
@@ -91,42 +85,26 @@ export class AsteriskProvider implements ITelephonyProvider, OnModuleInit, OnMod
   }
 
   async initialize(config: ProviderConfig): Promise<void> {
-    this.logger.log('🚀 Initializing Asterisk Provider...');
+    this.logger.log('🚀 Initializing Enhanced Asterisk Provider with GSM Gateway support...');
 
     this.config = config;
     
     // Extract Asterisk configuration
-    this.host = this.configService.get('ASTERISK_HOST', 'localhost');
-    this.port = parseInt(this.configService.get('ASTERISK_AMI_PORT', '5038'));
-    this.username = this.configService.get('ASTERISK_AMI_USERNAME', 'admin');
-    this.secret = this.configService.get('ASTERISK_AMI_SECRET');
     this.context = this.configService.get('ASTERISK_CONTEXT', 'ai-calling');
     this.extension = this.configService.get('ASTERISK_EXTENSION', 's');
 
-    if (!this.secret) {
-      throw new Error('Asterisk AMI credentials missing. Set ASTERISK_AMI_SECRET in .env');
-    }
-
     try {
-      // Create AMI connection
-      this.ami = new AsteriskManager(
-        this.port,
-        this.host,
-        this.username,
-        this.secret,
-        true // Enable events
-      );
-
-      // Setup event handlers
-      this.setupEventHandlers();
-
-      // Connect to Asterisk
-      await this.connect();
+      // Connection Manager handles AMI connections
+      // Gateway Manager handles gateway selection
+      // SIM Manager handles SIM selection
 
       this.ready = true;
-      this.logger.log('✅ Asterisk Provider initialized successfully');
-      this.logger.log(`📡 Connected to Asterisk at ${this.host}:${this.port}`);
+      this.logger.log('✅ Enhanced Asterisk Provider initialized successfully');
       this.logger.log(`📋 Using context: ${this.context}`);
+      this.logger.log('🔗 Integrated with Gateway Manager, SIM Manager, and Connection Manager');
+
+      // Setup event listeners
+      this.setupEventListeners();
     } catch (error) {
       this.logger.error(`❌ Failed to initialize Asterisk: ${error.message}`);
       throw error;
@@ -134,12 +112,11 @@ export class AsteriskProvider implements ITelephonyProvider, OnModuleInit, OnMod
   }
 
   isReady(): boolean {
-    return this.ready && this.ami && this.ami.isConnected();
+    return this.ready;
   }
 
   /**
-   * Make an outbound call via Asterisk
-   * TODO: Re-enable SIM selection when GSM Gateway is fixed
+   * Make an outbound call via Asterisk with GSM Gateway and SIM selection
    */
   async makeCall(params: CallInitiationParams): Promise<CallResult> {
     this.ensureReady();
@@ -147,15 +124,51 @@ export class AsteriskProvider implements ITelephonyProvider, OnModuleInit, OnMod
     const callId = this.generateCallId();
     
     this.logger.log(`📞 [ASTERISK] Initiating call ${callId}`);
-    this.logger.log(`   From: ${params.from}`);
     this.logger.log(`   To: ${params.to}`);
+    this.logger.log(`   Metadata: ${JSON.stringify(params.metadata)}`);
 
     try {
-      // TODO: Use SIM Manager when GSM Gateway is fixed
-      // For now, use simple channel selection
-      const channel = this.getChannelForNumber(params.from);
+      // Extract company ID from metadata
+      const companyId = params.metadata?.companyId;
+      if (!companyId) {
+        throw new Error('Company ID required in metadata for GSM Gateway call');
+      }
 
-      // Prepare Originate action
+      // Step 1: Select best gateway
+      this.logger.log(`📡 Step 1: Selecting best GSM Gateway...`);
+      const gateway = await this.gatewayManager.selectBestGateway(companyId);
+      
+      this.logger.log(`✅ Selected Gateway: ${gateway.name} (${gateway.ipAddress}:${gateway.port})`);
+
+      // Step 2: Select best SIM for the gateway
+      this.logger.log(`📱 Step 2: Selecting best SIM card...`);
+      const sim = await this.simManager.selectBestSIM(companyId, gateway.id);
+      
+      this.logger.log(`✅ Selected SIM: ${sim.simNumber} (${sim.operator})`);
+      this.logger.log(`   Port: ${sim.portNumber}`);
+
+      // Step 3: Get AMI connection for the gateway
+      this.logger.log(`🔌 Step 3: Getting AMI connection...`);
+      const ami = await this.connectionManager.getConnection(gateway.id, {
+        host: gateway.ipAddress,
+        port: gateway.port,
+        username: gateway.username || 'admin',
+        secret: gateway.password || '',
+      });
+
+      // Step 4: Mark SIM as busy
+      await this.simManager.markSIMBusy(sim.id, callId);
+      
+      // Step 5: Increment gateway active ports
+      await this.gatewayManager.updateActivePorts(gateway.id, true);
+
+      // Step 6: Build channel string
+      // Format: PJSIP/{portNumber}/gsm-gateway OR SIP/{simNumber}
+      const channel = this.buildChannelString(sim, gateway);
+      
+      this.logger.log(`📞 Step 4: Originating call via channel: ${channel}`);
+
+      // Step 7: Prepare Originate action
       const action = {
         action: 'Originate',
         channel,
@@ -163,9 +176,12 @@ export class AsteriskProvider implements ITelephonyProvider, OnModuleInit, OnMod
         context: this.context,
         priority: 1,
         timeout: (params.timeout || 30) * 1000,
-        callerid: params.from,
+        callerid: sim.simNumber, // Use SIM number as caller ID
         variable: {
           CALL_ID: callId,
+          SIM_ID: sim.id,
+          GATEWAY_ID: gateway.id,
+          COMPANY_ID: companyId,
           CALLBACK_URL: params.callbackUrl,
           STATUS_CALLBACK_URL: params.statusCallbackUrl || params.callbackUrl,
           CAMPAIGN_ID: params.metadata?.campaignId || '',
@@ -180,23 +196,61 @@ export class AsteriskProvider implements ITelephonyProvider, OnModuleInit, OnMod
         action.variable['MIXMONITOR_OPTIONS'] = 'b';
       }
 
-      const response = await this.sendAction(action);
+      const response = await this.connectionManager.sendAction(gateway.id, action);
 
       if (!response || response.response !== 'Success') {
         throw new Error(`Asterisk Originate failed: ${response?.message || 'Unknown error'}`);
       }
 
+      // Store channel info
       this.activeChannels.set(callId, {
         callId,
         channel,
         to: params.to,
-        from: params.from,
+        from: sim.simNumber,
         status: CallState.DIALING,
+        startTime: new Date(),
+        metadata: {
+          ...params.metadata,
+          gatewayId: gateway.id,
+          gatewayName: gateway.name,
+          simId: sim.id,
+          simNumber: sim.simNumber,
+          operator: sim.operator,
+          portNumber: sim.portNumber,
+        },
+        gatewayId: gateway.id,
+        simId: sim.id,
+      });
+
+      this.logger.log(`✅ [ASTERISK] Call ${callId} originated successfully`);
+      this.logger.log(`   Gateway: ${gateway.name}`);
+      this.logger.log(`   SIM: ${sim.simNumber} (${sim.operator})`);
+      this.logger.log(`   Channel: ${channel}`);
+
+      // Log SIM call
+      await this.simManager.logSIMCall({
+        simId: sim.id,
+        companyId,
+        callSid: callId,
+        campaignId: params.metadata?.campaignId,
+        contactId: params.metadata?.contactId,
+        destinationNumber: params.to,
+        callDirection: 'outbound',
+        callStatus: 'DIALING',
         startTime: new Date(),
         metadata: params.metadata,
       });
 
-      this.logger.log(`✅ [ASTERISK] Call ${callId} originated successfully`);
+      // Emit event
+      this.eventEmitter.emit('call.initiated', {
+        callId,
+        gatewayId: gateway.id,
+        simId: sim.id,
+        to: params.to,
+        from: sim.simNumber,
+        timestamp: new Date(),
+      });
 
       return {
         callSid: callId,
@@ -204,7 +258,14 @@ export class AsteriskProvider implements ITelephonyProvider, OnModuleInit, OnMod
         status: CallState.DIALING,
         direction: CallDirection.OUTBOUND,
         to: params.to,
-        from: params.from,
+        from: sim.simNumber,
+        metadata: {
+          gatewayId: gateway.id,
+          gatewayName: gateway.name,
+          simId: sim.id,
+          simNumber: sim.simNumber,
+          operator: sim.operator,
+        },
       };
     } catch (error) {
       this.logger.error(`❌ [ASTERISK] Failed to make call: ${error.message}`);
@@ -233,11 +294,15 @@ export class AsteriskProvider implements ITelephonyProvider, OnModuleInit, OnMod
         channel: channelInfo.channel,
       };
 
-      const response = await this.sendAction(action);
+      const response = await this.connectionManager.sendAction(
+        channelInfo.gatewayId || 'default',
+        action
+      );
 
       if (response && response.response === 'Success') {
         this.logger.log(`✅ [ASTERISK] Call ${callSid} hung up successfully`);
-        this.activeChannels.delete(callSid);
+        
+        // Cleanup will happen in hangup event handler
         return true;
       }
 
@@ -309,7 +374,11 @@ export class AsteriskProvider implements ITelephonyProvider, OnModuleInit, OnMod
         digit: digits,
       };
 
-      const response = await this.sendAction(action);
+      const response = await this.connectionManager.sendAction(
+        channelInfo.gatewayId || 'default',
+        action
+      );
+      
       return response && response.response === 'Success';
     } catch (error) {
       this.logger.error(`❌ [ASTERISK] Failed to send DTMF: ${error.message}`);
@@ -340,7 +409,11 @@ export class AsteriskProvider implements ITelephonyProvider, OnModuleInit, OnMod
         priority: 1,
       };
 
-      const response = await this.sendAction(action);
+      const response = await this.connectionManager.sendAction(
+        channelInfo.gatewayId || 'default',
+        action
+      );
+      
       return response && response.response === 'Success';
     } catch (error) {
       this.logger.error(`❌ [ASTERISK] Failed to transfer call: ${error.message}`);
@@ -453,19 +526,18 @@ export class AsteriskProvider implements ITelephonyProvider, OnModuleInit, OnMod
    * Health check
    */
   async healthCheck(): Promise<boolean> {
-    if (!this.ami) {
-      return false;
-    }
-
     try {
-      const response = await this.sendAction({ action: 'Ping' });
-      const healthy = response && response.response === 'Success';
+      // Check if any connection is healthy
+      const statuses = this.connectionManager.getAllConnectionStatuses();
+      const hasHealthyConnection = statuses.some(status => status.isConnected);
       
-      if (healthy) {
+      if (hasHealthyConnection) {
         this.logger.log('✅ [ASTERISK] Health check passed');
+      } else {
+        this.logger.warn('⚠️ [ASTERISK] No healthy connections');
       }
       
-      return healthy;
+      return hasHealthyConnection;
     } catch (error) {
       this.logger.error(`❌ [ASTERISK] Health check failed: ${error.message}`);
       return false;
@@ -478,48 +550,39 @@ export class AsteriskProvider implements ITelephonyProvider, OnModuleInit, OnMod
 
   private ensureReady(): void {
     if (!this.isReady()) {
-      throw new Error('Asterisk provider is not initialized or connected');
+      throw new Error('Asterisk provider is not initialized');
     }
   }
 
-  private async connect(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this.ami.on('connect', () => {
-        this.logger.log('✅ Connected to Asterisk AMI');
-        resolve();
-      });
-
-      this.ami.on('error', (error) => {
-        this.logger.error(`❌ AMI Connection Error: ${error}`);
-        reject(error);
-      });
-
-      // Keepalive
-      this.ami.keepConnected();
+  /**
+   * Setup event listeners for Asterisk events
+   */
+  private setupEventListeners(): void {
+    // Listen to Asterisk events from Connection Manager
+    this.eventEmitter.on('asterisk.event', (data: any) => {
+      this.handleAsteriskEvent(data.event);
     });
+
+    this.logger.log('✅ Event listeners configured');
   }
 
-  private async disconnect(): Promise<void> {
-    if (this.ami) {
-      this.ami.disconnect();
-      this.ready = false;
+  /**
+   * Build channel string for GSM Gateway
+   */
+  private buildChannelString(sim: any, gateway: any): string {
+    // Different GSM Gateway models use different channel formats
+    const model = gateway.model.toLowerCase();
+
+    if (model.includes('dinstar')) {
+      return `PJSIP/${sim.portNumber}@${gateway.name.toLowerCase().replace(/\s/g, '-')}`;
+    } else if (model.includes('yeastar')) {
+      return `SIP/${sim.simNumber}@${gateway.name.toLowerCase().replace(/\s/g, '-')}`;
+    } else if (model.includes('openvox')) {
+      return `Dahdi/g${sim.portNumber}`;
+    } else {
+      // Generic format
+      return `PJSIP/${sim.portNumber}/gsm-gateway`;
     }
-  }
-
-  private setupEventHandlers(): void {
-    // Listen to Asterisk events
-    this.ami.on('managerevent', (event) => {
-      this.handleAsteriskEvent(event);
-    });
-
-    this.ami.on('disconnect', () => {
-      this.logger.warn('⚠️ Disconnected from Asterisk AMI');
-      this.ready = false;
-    });
-
-    this.ami.on('reconnection', () => {
-      this.logger.log('🔄 Reconnecting to Asterisk AMI...');
-    });
   }
 
   private handleAsteriskEvent(event: any): void {
@@ -580,7 +643,7 @@ export class AsteriskProvider implements ITelephonyProvider, OnModuleInit, OnMod
     }
   }
 
-  private handleHangup(event: any): void {
+  private async handleHangup(event: any): Promise<void> {
     this.logger.log(`📴 [HANGUP] ${event.channel} - Cause: ${event.cause}`);
     
     const callId = event.linkedid || event.uniqueid;
@@ -596,11 +659,26 @@ export class AsteriskProvider implements ITelephonyProvider, OnModuleInit, OnMod
         );
       }
 
-      // TODO: Re-enable SIM release when GSM Gateway is fixed
-      // if (channelInfo.metadata?.simId) {
-      //   const success = event.cause === '16' || event.cause === 'ANSWERED';
-      //   this.simManager.markSIMAvailable(...).catch(...);
-      // }
+      // Release SIM and gateway resources
+      if (channelInfo.simId && channelInfo.gatewayId) {
+        const success = event.cause === '16' || event.dialstatus === 'ANSWER';
+        
+        try {
+          // Mark SIM as available
+          await this.simManager.markSIMAvailable(
+            channelInfo.simId,
+            callId,
+            success
+          );
+
+          // Decrement gateway active ports
+          await this.gatewayManager.updateActivePorts(channelInfo.gatewayId, false);
+
+          this.logger.log(`✅ Resources released for call: ${callId}`);
+        } catch (error) {
+          this.logger.error(`Failed to release resources: ${error.message}`);
+        }
+      }
       
       // Remove from active channels after delay
       setTimeout(() => {
@@ -615,28 +693,6 @@ export class AsteriskProvider implements ITelephonyProvider, OnModuleInit, OnMod
 
   private handleNewState(event: any): void {
     this.logger.debug(`🔄 [NEW STATE] ${event.channel} - ${event.channelstatedesc}`);
-  }
-
-  private async sendAction(action: any): Promise<any> {
-    return new Promise((resolve, reject) => {
-      this.ami.action(action, (err, res) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(res);
-        }
-      });
-    });
-  }
-
-  private getChannelForNumber(from: string): string {
-    // TODO: Replace with SIM Manager when GSM Gateway is fixed
-    return `PJSIP/gsm-1`;
-  }
-
-  private getAvailableSIMPort(from: string): number {
-    // TODO: Replace with SIM Manager when GSM Gateway is fixed
-    return 1;
   }
 
   private generateCallId(): string {
@@ -668,4 +724,6 @@ interface ChannelInfo {
   endTime?: Date;
   duration?: number;
   metadata?: any;
+  gatewayId?: string;
+  simId?: string;
 }

@@ -1,22 +1,22 @@
 /**
  * Telephony Engine Module
  * Enterprise telephony system with provider abstraction
+ * Enhanced with GSM Gateway, SIM Management, and Connection Management
  */
 
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
-
-// Import GSM Gateway Module
-// import { GSMGatewayModule } from '../gsm-gateway/gsm-gateway.module'; // TODO: Fix compilation errors
+import { PrismaModule } from '../../common/prisma/prisma.module';
 
 // Controllers
 import {
   TelephonyEngineController,
   TelephonyWebhookController,
 } from './telephony-engine.controller';
+import { GSMGatewayController } from './gsm-gateway.controller';
 
-// Services
+// Core Services
 import { TelephonyManagerService } from './services/telephony-manager.service';
 import { ProviderManagerService } from './services/provider-manager.service';
 import { ProviderRegistryService } from './services/provider-registry.service';
@@ -28,15 +28,28 @@ import { RecordingManagerService } from './services/recording-manager.service';
 import { WebhookManagerService } from './services/webhook-manager.service';
 import { PipelineIntegrationService } from './services/pipeline-integration.service';
 
-// Providers
+// GSM Gateway & SIM Management Services
+import { GatewayManagerService } from './services/gateway-manager.service';
+import { SIMManagerService } from './services/sim-manager.service';
+import { ConnectionManagerService } from './services/connection-manager.service';
+
+// Telephony Providers
 import { TwilioProvider } from './providers/twilio.provider';
 import { ExotelProvider } from './providers/exotel.provider';
 import { PlivoProvider } from './providers/plivo.provider';
 import { AsteriskProvider } from './providers/asterisk.provider';
 
 @Module({
-  imports: [ConfigModule, EventEmitterModule], // GSMGatewayModule, // TODO: Fix compilation errors
-  controllers: [TelephonyEngineController, TelephonyWebhookController],
+  imports: [
+    ConfigModule,
+    EventEmitterModule,
+    PrismaModule,
+  ],
+  controllers: [
+    TelephonyEngineController,
+    TelephonyWebhookController,
+    GSMGatewayController,
+  ],
   providers: [
     // Main Manager
     TelephonyManagerService,
@@ -52,7 +65,12 @@ import { AsteriskProvider } from './providers/asterisk.provider';
     WebhookManagerService,
     PipelineIntegrationService,
 
-    // Provider Implementations
+    // GSM Gateway & SIM Management
+    GatewayManagerService,
+    SIMManagerService,
+    ConnectionManagerService,
+
+    // Telephony Provider Implementations
     TwilioProvider,
     ExotelProvider,
     PlivoProvider,
@@ -64,6 +82,9 @@ import { AsteriskProvider } from './providers/asterisk.provider';
     OutgoingCallService,
     RecordingManagerService,
     PipelineIntegrationService,
+    GatewayManagerService,
+    SIMManagerService,
+    ConnectionManagerService,
   ],
 })
 export class TelephonyEngineModule {}
