@@ -205,8 +205,8 @@ export default function ScriptsPage() {
               Create Script
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-4xl">
-            <DialogHeader>
+          <DialogContent className="max-w-2xl h-[90vh] flex flex-col gap-0 p-0 overflow-hidden">
+            <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-4 border-b">
               <DialogTitle>Create New Script</DialogTitle>
             </DialogHeader>
             <CreateScriptForm

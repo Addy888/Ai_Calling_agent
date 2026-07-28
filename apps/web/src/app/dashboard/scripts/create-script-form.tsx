@@ -137,174 +137,197 @@ export function CreateScriptForm({ onSuccess }: CreateScriptFormProps) {
   };
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="name">Script Name *</Label>
-          <Input
-            id="name"
-            {...form.register('name')}
-            placeholder="Enter script name"
-          />
-          {form.formState.errors.name && (
-            <p className="text-sm text-red-500">{form.formState.errors.name.message}</p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="language">Language</Label>
-          <Select
-            value={form.watch('language')}
-            onValueChange={(value) => form.setValue('language', value as ScriptLanguage)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select language" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ScriptLanguage.ENGLISH}>English</SelectItem>
-              <SelectItem value={ScriptLanguage.HINDI}>Hindi</SelectItem>
-              <SelectItem value={ScriptLanguage.MARATHI}>Marathi</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="description">Description</Label>
-        <Textarea
-          id="description"
-          {...form.register('description')}
-          placeholder="Enter script description"
-          rows={2}
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="version">Version</Label>
-          <Input
-            id="version"
-            {...form.register('version')}
-            placeholder="e.g., 1.0.0"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="isActive">Status</Label>
-          <Select
-            value={form.watch('isActive')?.toString()}
-            onValueChange={(value) => form.setValue('isActive', value === 'true')}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="true">Active</SelectItem>
-              <SelectItem value="false">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle>Script Content *</CardTitle>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={loadSampleScript}
-              >
-                <Wand2 className="mr-2 h-4 w-4" />
-                Load Sample
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handlePreview}
-                disabled={!watchedContent}
-              >
-                <Eye className="mr-2 h-4 w-4" />
-                Preview
-              </Button>
-            </div>
+    <>
+      {/* Scrollable Content Area */}
+      <div className="flex-1 overflow-y-auto px-6 py-4 min-h-0" style={{ overflowX: 'hidden' }}>
+        <div className="space-y-6">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">Script Name *</Label>
+            <Input
+              id="name"
+              {...form.register('name')}
+              placeholder="Enter script name"
+            />
+            {form.formState.errors.name && (
+              <p className="text-sm text-red-500">{form.formState.errors.name.message}</p>
+            )}
           </div>
-        </CardHeader>
-        <CardContent>
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList>
-              <TabsTrigger value="editor">Editor</TabsTrigger>
-              <TabsTrigger value="preview">Preview</TabsTrigger>
-              <TabsTrigger value="variables">Variables</TabsTrigger>
-            </TabsList>
 
-            <TabsContent value="editor" className="mt-4">
-              <Textarea
-                {...form.register('content')}
-                placeholder="Enter your script content here. Use {variables} for dynamic content."
-                rows={12}
-                className="font-mono text-sm"
-              />
-              {form.formState.errors.content && (
-                <p className="text-sm text-red-500 mt-2">{form.formState.errors.content.message}</p>
-              )}
-            </TabsContent>
+          <div className="space-y-2">
+            <Label htmlFor="language">Language</Label>
+            <Select
+              value={form.watch('language')}
+              onValueChange={(value) => form.setValue('language', value as ScriptLanguage)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select language" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ScriptLanguage.ENGLISH}>English</SelectItem>
+                <SelectItem value={ScriptLanguage.HINDI}>Hindi</SelectItem>
+                <SelectItem value={ScriptLanguage.MARATHI}>Marathi</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
 
-            <TabsContent value="preview" className="mt-4">
-              <div className="p-4 border rounded-lg bg-muted min-h-[300px]">
-                {previewContent ? (
-                  <pre className="whitespace-pre-wrap text-sm">{previewContent}</pre>
-                ) : (
-                  <p className="text-muted-foreground text-sm">
-                    Click "Preview" button to see how your script will look with sample data
-                  </p>
-                )}
+        <div className="space-y-2">
+          <Label htmlFor="description">Description</Label>
+          <Textarea
+            id="description"
+            {...form.register('description')}
+            placeholder="Enter script description"
+            rows={2}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="version">Version</Label>
+            <Input
+              id="version"
+              {...form.register('version')}
+              placeholder="e.g., 1.0.0"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="isActive">Status</Label>
+            <Select
+              value={form.watch('isActive')?.toString()}
+              onValueChange={(value) => form.setValue('isActive', value === 'true')}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="true">Active</SelectItem>
+                <SelectItem value="false">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle>Script Content *</CardTitle>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={loadSampleScript}
+                >
+                  <Wand2 className="mr-2 h-4 w-4" />
+                  Load Sample
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePreview}
+                  disabled={!watchedContent}
+                >
+                  <Eye className="mr-2 h-4 w-4" />
+                  Preview
+                </Button>
               </div>
-            </TabsContent>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList>
+                <TabsTrigger value="editor">Editor</TabsTrigger>
+                <TabsTrigger value="preview">Preview</TabsTrigger>
+                <TabsTrigger value="variables">Variables</TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="variables" className="mt-4">
-              <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  You can use these variables in your script. They will be replaced with actual values during calls:
-                </p>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="space-y-2">
-                    <h4 className="font-medium">Contact Variables</h4>
-                    <ul className="space-y-1 text-muted-foreground">
-                      <li><code>{'{firstName}'}</code> - Contact's first name</li>
-                      <li><code>{'{lastName}'}</code> - Contact's last name</li>
-                      <li><code>{'{phone}'}</code> - Contact's phone number</li>
-                      <li><code>{'{email}'}</code> - Contact's email address</li>
-                      <li><code>{'{company}'}</code> - Contact's company</li>
-                    </ul>
-                  </div>
-                  <div className="space-y-2">
-                    <h4 className="font-medium">Agent Variables</h4>
-                    <ul className="space-y-1 text-muted-foreground">
-                      <li><code>{'{agentName}'}</code> - Agent's name</li>
-                      <li><code>{'{companyName}'}</code> - Your company name</li>
-                      <li><code>{'{campaignName}'}</code> - Campaign name</li>
-                    </ul>
+              <TabsContent value="editor" className="mt-4">
+                <Textarea
+                  {...form.register('content')}
+                  placeholder="Enter your script content here. Use {variables} for dynamic content."
+                  rows={12}
+                  className="font-mono text-sm"
+                />
+                {form.formState.errors.content && (
+                  <p className="text-sm text-red-500 mt-2">{form.formState.errors.content.message}</p>
+                )}
+              </TabsContent>
+
+              <TabsContent value="preview" className="mt-4">
+                <div className="p-4 border rounded-lg bg-muted min-h-[300px]">
+                  {previewContent ? (
+                    <pre className="whitespace-pre-wrap text-sm">{previewContent}</pre>
+                  ) : (
+                    <p className="text-muted-foreground text-sm">
+                      Click "Preview" button to see how your script will look with sample data
+                    </p>
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="variables" className="mt-4">
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    You can use these variables in your script. They will be replaced with actual values during calls:
+                  </p>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="space-y-2">
+                      <h4 className="font-medium">Contact Variables</h4>
+                      <ul className="space-y-1 text-muted-foreground">
+                        <li><code>{'{firstName}'}</code> - Contact's first name</li>
+                        <li><code>{'{lastName}'}</code> - Contact's last name</li>
+                        <li><code>{'{phone}'}</code> - Contact's phone number</li>
+                        <li><code>{'{email}'}</code> - Contact's email address</li>
+                        <li><code>{'{company}'}</code> - Contact's company</li>
+                      </ul>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="font-medium">Agent Variables</h4>
+                      <ul className="space-y-1 text-muted-foreground">
+                        <li><code>{'{agentName}'}</code> - Agent's name</li>
+                        <li><code>{'{companyName}'}</code> - Your company name</li>
+                        <li><code>{'{campaignName}'}</code> - Campaign name</li>
+                      </ul>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+      </div>
+      </div>
 
-      <div className="flex justify-end gap-3">
+      {/* Fixed Footer with Buttons */}
+      <div className="flex-shrink-0 px-6 py-4 border-t bg-background">
+        <div className="flex justify-end gap-3">
+        <Button type="button" variant="outline" onClick={() => form.reset()}>
+          Cancel
+        </Button>
         <Button type="button" variant="outline" onClick={() => form.reset()}>
           Reset
         </Button>
-        <Button type="submit" disabled={loading}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            form.setValue('isActive', false);
+            form.handleSubmit(onSubmit)();
+          }}
+          disabled={loading}
+        >
+          {loading && <Spinner className="mr-2" />}
+          Save Draft
+        </Button>
+        <Button type="button" onClick={form.handleSubmit(onSubmit)} disabled={loading}>
           {loading && <Spinner className="mr-2" />}
           Create Script
         </Button>
+        </div>
       </div>
-    </form>
+    </>
   );
 }

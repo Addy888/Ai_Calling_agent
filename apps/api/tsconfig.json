@@ -20,10 +20,11 @@
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
+    "composite": false,
     "paths": {
       "@/*": ["src/*"]
     }
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "src/**/*.ts", "src/**/*.tsx"],
   "exclude": ["node_modules", "dist", "test", "**/*.spec.ts", "**/__tests__/**", "**/tests/**"]
 }
