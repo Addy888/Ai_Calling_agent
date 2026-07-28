@@ -1,5 +1,10 @@
+import { config } from 'dotenv';
+import { resolve } from 'path';
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+
+// Load environment variables from root .env file
+config({ path: resolve(__dirname, '../../.env') });
 
 const prisma = new PrismaClient();
 
@@ -106,6 +111,8 @@ async function main() {
 
     // Activity Logs
     { name: 'View Activity Logs', slug: 'activity-logs.view', module: 'activity-logs' },
+    { name: 'Create Activity Logs', slug: 'activity-logs.create', module: 'activity-logs' },
+    { name: 'Delete Activity Logs', slug: 'activity-logs.delete', module: 'activity-logs' },
 
     // Memory Management
     { name: 'Read Memory Data', slug: 'memory.read', module: 'memory' },
@@ -144,7 +151,7 @@ async function main() {
     { name: 'Read Reports Data', slug: 'reports.read', module: 'reports' },
 
     // Activity Logs (additional)
-    { name: 'Read Activity Logs Data', slug: 'activity_logs.read', module: 'activity-logs' },
+    { name: 'Read Activity Logs Data', slug: 'activity-logs.read', module: 'activity-logs' },
 
     // Settings (additional)
     { name: 'Read Settings Data', slug: 'settings.read', module: 'settings' },
