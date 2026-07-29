@@ -75,10 +75,10 @@ export default function CompaniesPage() {
 
       const response = await api.get(`/companies?${params.toString()}`);
       
-      if (response.data) {
-        setCompanies(response.data.companies || []);
-        setTotal(response.data.total || 0);
-        setTotalPages(response.data.totalPages || 0);
+      if (response.data?.success && response.data?.data) {
+        setCompanies(response.data.data.items || []);
+        setTotal(response.data.data.meta?.totalItems || 0);
+        setTotalPages(response.data.data.meta?.totalPages || 0);
       }
     } catch (error) {
       console.error('Failed to fetch companies:', error);

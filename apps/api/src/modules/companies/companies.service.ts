@@ -256,13 +256,17 @@ export class CompaniesService {
     return `COMP${timestamp}${random}`;
   }
 
-  async findAll(paginationDto: PaginationDto) {
+  async findAll(paginationDto: PaginationDto, companyId?: string) {
     const { page, limit, search, sortBy, sortOrder } = paginationDto;
     const skip = (page - 1) * limit;
 
     const where: any = {
       deletedAt: null,
     };
+
+    if (companyId) {
+      where.id = companyId;
+    }
 
     if (search) {
       where.OR = [

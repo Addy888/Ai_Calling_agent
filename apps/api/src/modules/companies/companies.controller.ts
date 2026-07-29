@@ -20,6 +20,8 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+
 @ApiTags('Companies')
 @Controller('companies')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -36,8 +38,14 @@ export class CompaniesController {
 
   @Get()
   @ApiOperation({ summary: 'Get all companies' })
-  findAll(@Query() paginationDto: PaginationDto) {
-    return this.companiesService.findAll(paginationDto);
+  findAll(
+    @Query() paginationDto: PaginationDto,
+    @CurrentUser() user: any,
+  ) {
+    const roles = (user?.roles || []).map((r: any) => typeof r === 'string' ? r : r?.slug || '');
+    const isSuperAdmin = roles.includes('super-admin');
+    const companyId = isSuperAdmin ? undefined : user?.companyId;
+    return this.companiesService.findAll(paginationDto, companyId);
   }
 
   @Get(':id')

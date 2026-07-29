@@ -51,7 +51,17 @@ export class UsersController {
   @Get()
   @ApiOperation({ summary: 'Get all users with pagination and filters' })
   @ApiResponse({ status: 200, description: 'Users retrieved successfully' })
-  async findAll(@Query() query: UserQueryDto): Promise<UserListResponse> {
+  async findAll(
+    @Query() query: UserQueryDto,
+    @CurrentUser() user: any,
+  ): Promise<UserListResponse> {
+    const roles: string[] = (user?.roles || []).map((r: any) =>
+      typeof r === 'string' ? r : r?.slug || r?.name || '',
+    );
+    // Non-super-admin users can only see users within their own company
+    if (!roles.includes('super-admin') && user?.companyId) {
+      query.companyId = user.companyId;
+    }
     return this.usersService.findAll(query);
   }
 

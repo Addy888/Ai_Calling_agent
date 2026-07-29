@@ -7,22 +7,43 @@ import { Header } from '@/components/layout/header';
 import { Toaster } from '@/components/ui/toaster';
 import { authService } from '@/lib/auth';
 import { cn } from '@/lib/utils';
+import { Loader2 } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [authorized, setAuthorized] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+
     if (!authService.isAuthenticated()) {
       router.push('/login');
+      return;
     }
+
+    const user = authService.getUser();
+    const roles: string[] = (user?.roles || []).map((r: any) =>
+      typeof r === 'string' ? r : r?.slug || r?.name || ''
+    );
+
+    // Company-admin must use /company portal, not /dashboard
+    if (!roles.includes('super-admin')) {
+      router.push('/company');
+      return;
+    }
+
+    setAuthorized(true);
   }, [router]);
 
-  if (!mounted || !authService.isAuthenticated()) {
-    return null;
+  if (!mounted || !authorized) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   const handleSidebarToggle = () => {
