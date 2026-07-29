@@ -22,9 +22,9 @@ export class CompaniesService {
       throw new BadRequestException('Passwords do not match');
     }
 
-    // Check if company email already exists
-    const existingCompany = await this.prisma.company.findUnique({
-      where: { email: companyData.email },
+    // Check if company email already exists (exclude soft-deleted companies)
+    const existingCompany = await this.prisma.company.findFirst({
+      where: { email: companyData.email, deletedAt: null },
     });
 
     if (existingCompany) {
@@ -235,15 +235,19 @@ export class CompaniesService {
         data: result,
         message: 'Company and administrator created successfully. Admin can now log in.',
       };
-    } catch (error) {
+    } catch (error: any) {
       // Transaction will auto-rollback on error
-      console.error('Company creation failed:', error);
-      
       if (error instanceof BadRequestException || error instanceof ConflictException) {
         throw error;
       }
-      
-      throw new BadRequestException('Failed to create company. Transaction rolled back.');
+
+      // Handle Prisma unique constraint violations (P2002)
+      if (error?.code === 'P2002') {
+        const field = error?.meta?.target?.[0] || 'field';
+        throw new ConflictException(`A record with this ${field} already exists`);
+      }
+
+      throw new BadRequestException(`Failed to create company: ${error?.message || 'Transaction rolled back.'}`);
     }
   }
 

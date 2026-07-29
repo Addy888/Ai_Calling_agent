@@ -1,6 +1,10 @@
 import { IsString, IsEmail, IsOptional, IsBoolean, IsUrl, Length, Matches, MinLength, ValidateNested } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
+
+// Helper: treat empty strings as absent (undefined) so @IsOptional validators are skipped
+const emptyToUndefined = ({ value }: { value: any }) =>
+  value === '' || value === null ? undefined : value;
 
 // Company Administrator DTO
 export class CompanyAdministratorDto {
@@ -48,32 +52,38 @@ export class CreateCompanyDto {
 
   @ApiPropertyOptional({ description: 'Company phone number', example: '+1-555-0123' })
   @IsOptional()
+  @Transform(emptyToUndefined)
   @IsString()
   @Matches(/^\+?[\d\s\-\(\)]+$/, { message: 'Invalid phone number format' })
   phone?: string;
 
   @ApiPropertyOptional({ description: 'Company website', example: 'https://acmecorp.com' })
   @IsOptional()
-  @IsUrl()
+  @Transform(emptyToUndefined)
+  @IsUrl({}, { message: 'Website must be a valid URL (e.g. https://example.com)' })
   website?: string;
 
   @ApiPropertyOptional({ description: 'Company address' })
   @IsOptional()
+  @Transform(emptyToUndefined)
   @IsString()
   address?: string;
 
   @ApiPropertyOptional({ description: 'Company logo path' })
   @IsOptional()
+  @Transform(emptyToUndefined)
   @IsString()
   logo?: string;
 
   @ApiPropertyOptional({ description: 'Company status', example: 'ACTIVE' })
   @IsOptional()
+  @Transform(emptyToUndefined)
   @IsString()
   status?: string;
 
   @ApiPropertyOptional({ description: 'Subscription plan', example: 'BASIC' })
   @IsOptional()
+  @Transform(emptyToUndefined)
   @IsString()
   subscriptionPlan?: string;
 
