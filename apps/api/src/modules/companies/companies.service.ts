@@ -117,22 +117,15 @@ export class CompaniesService {
           ],
         });
 
-        // 6. Create Default Contact Group
-        await prisma.contactGroup.create({
-          data: {
-            companyId: company.id,
-            name: 'All Contacts',
-            description: 'Default contact group',
-            createdBy: adminUser.id,
-          },
-        });
+        // 6. Contact Groups are not part of the current schema - skip
 
         // 7. Create Default Knowledge Base
         await prisma.knowledgeBase.create({
           data: {
             companyId: company.id,
-            name: 'Default Knowledge Base',
-            description: 'Default knowledge base for company',
+            title: 'Default Knowledge Base',
+            type: 'CUSTOM',
+            content: 'Default knowledge base for company',
             status: 'ACTIVE',
             createdBy: adminUser.id,
           },
@@ -147,7 +140,7 @@ export class CompaniesService {
           data: {
             companyId: company.id,
             agentName: 'Default AI Agent',
-            agentType: 'CALLING',
+            agentType: 'CONVERSATIONAL',
             promptId: defaultPrompt?.id,
             configuration: {},
             metadata: {},
@@ -191,15 +184,15 @@ export class CompaniesService {
           data: {
             companyId: company.id,
             action: 'COMPANY_CREATED',
-            module: 'companies',
-            description: `Company ${company.name} created with administrator ${administrator.fullName}`,
+            entityType: 'companies',
+            entityId: company.id,
             metadata: {
               companyId: company.id,
               companyName: company.name,
               adminEmail: administrator.adminEmail,
               companyCode,
+              description: `Company ${company.name} created with administrator ${administrator.fullName}`,
             },
-            performedBy: 'system',
           },
         });
 
@@ -210,11 +203,11 @@ export class CompaniesService {
             userId: adminUser.id,
             action: 'USER_CREATED',
             module: 'users',
-            description: `Company administrator ${administrator.fullName} created`,
-            metadata: {
+            details: {
               userId: adminUser.id,
               userEmail: administrator.adminEmail,
               role: 'company-admin',
+              description: `Company administrator ${administrator.fullName} created`,
             },
           },
         });
