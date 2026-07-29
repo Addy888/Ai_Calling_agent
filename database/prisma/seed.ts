@@ -227,6 +227,19 @@ async function main() {
     },
   });
 
+  const companyAdminRole = await prisma.role.upsert({
+    where: { slug: 'company-admin' },
+    update: {},
+    create: {
+      name: 'Company Admin',
+      slug: 'company-admin',
+      description: 'Full access to company-specific features and data',
+      status: 'ACTIVE',
+      isActive: true,
+      createdBy: 'system',
+    },
+  });
+
   console.log('✅ Created roles');
 
   // Assign all permissions to Super Admin
@@ -312,6 +325,28 @@ async function main() {
     ),
   );
 
+  // Assign company-level permissions to Company Admin (all except companies, users, roles, permissions management)
+  const companyAdminPermissions = createdPermissions.filter(
+    (p) => !['companies', 'users', 'roles', 'permissions'].includes(p.module),
+  );
+  await Promise.all(
+    companyAdminPermissions.map((permission) =>
+      prisma.rolePermission.upsert({
+        where: {
+          roleId_permissionId: {
+            roleId: companyAdminRole.id,
+            permissionId: permission.id,
+          },
+        },
+        update: {},
+        create: {
+          roleId: companyAdminRole.id,
+          permissionId: permission.id,
+        },
+      }),
+    ),
+  );
+
   console.log('✅ Assigned permissions to roles');
 
   // Create default super admin user
@@ -350,6 +385,42 @@ async function main() {
 
   console.log('✅ Created super admin user');
   console.log('📧 Email: admin@aicallingagent.com');
+  console.log('🔑 Password: Admin@123');
+
+  // Create company admin user for testing
+  const companyAdminUser = await prisma.user.upsert({
+    where: { email: 'company@aicallingagent.com' },
+    update: {},
+    create: {
+      companyId: company.id,
+      email: 'company@aicallingagent.com',
+      password: hashedPassword,
+      firstName: 'Company',
+      lastName: 'Admin',
+      status: 'ACTIVE',
+      isActive: true,
+      emailVerified: true,
+      createdBy: 'system',
+    },
+  });
+
+  // Assign Company Admin role to the user
+  await prisma.userRole.upsert({
+    where: {
+      userId_roleId: {
+        userId: companyAdminUser.id,
+        roleId: companyAdminRole.id,
+      },
+    },
+    update: {},
+    create: {
+      userId: companyAdminUser.id,
+      roleId: companyAdminRole.id,
+    },
+  });
+
+  console.log('✅ Created company admin user');
+  console.log('📧 Email: company@aicallingagent.com');
   console.log('🔑 Password: Admin@123');
 
   console.log('🌱 Database seed completed successfully!');

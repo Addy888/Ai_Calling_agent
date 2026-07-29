@@ -22,12 +22,23 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      await authService.login({ email, password });
+      const response = await authService.login({ email, password });
+      const user = response.data.user;
+      const roles = user.roles?.map((r: any) => r.slug) || [];
+      
       toast({
         title: 'Success',
         description: 'Logged in successfully',
       });
-      router.push('/dashboard');
+
+      // Route based on role
+      if (roles.includes('super-admin')) {
+        router.push('/dashboard');
+      } else if (roles.includes('company-admin') || roles.includes('admin') || roles.includes('manager')) {
+        router.push('/company');
+      } else {
+        router.push('/company');
+      }
     } catch (error: any) {
       toast({
         title: 'Error',
