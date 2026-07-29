@@ -92,12 +92,12 @@ export default function CompaniesPage() {
     }
   };
 
-  const handleCreateCompany = async (formData: FormData) => {
+  const handleCreateCompany = async (formData: any) => {
     try {
       await api.post('/companies', formData);
       toast({
         title: 'Success',
-        description: 'Company created successfully',
+        description: 'Company and administrator created successfully. Admin can now log in.',
       });
       setShowCreateDialog(false);
       fetchCompanies();
@@ -110,11 +110,13 @@ export default function CompaniesPage() {
     }
   };
 
-  const handleEditCompany = async (formData: FormData) => {
+  const handleEditCompany = async (formData: any) => {
     if (!selectedCompany) return;
     
     try {
-      await api.patch(`/companies/${selectedCompany.id}`, formData);
+      // For edit, only send company fields (no administrator)
+      const { administrator, ...companyData } = formData;
+      await api.patch(`/companies/${selectedCompany.id}`, companyData);
       toast({
         title: 'Success',
         description: 'Company updated successfully',
@@ -205,10 +207,10 @@ export default function CompaniesPage() {
               Add Company
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create Company</DialogTitle>
-              <DialogDescription>Add a new company to your organization</DialogDescription>
+              <DialogDescription>Add a new company with administrator account</DialogDescription>
             </DialogHeader>
             <CompanyForm onSubmit={handleCreateCompany} />
           </DialogContent>
@@ -463,18 +465,92 @@ export default function CompaniesPage() {
 
 interface CompanyFormProps {
   company?: Company;
-  onSubmit: (formData: FormData) => void;
+  onSubmit: (formData: any) => void;
 }
 
 function CompanyForm({ company, onSubmit }: CompanyFormProps) {
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const { toast } = useToast();
+  const [formData, setFormData] = useState({
+    // Company Information
+    name: company?.name || '',
+    email: company?.email || '',
+    phone: company?.phone || '',
+    website: company?.website || '',
+    address: '',
+    status: company?.status || 'ACTIVE',
+    subscriptionPlan: 'BASIC',
+    
+    // Administrator (only for new companies)
+    administrator: {
+      fullName: '',
+      adminEmail: '',
+      password: '',
+      confirmPassword: '',
+      forcePasswordChange: true,
+      sendWelcomeEmail: true,
+    }
+  });
+
+  const handleChange = (field: string, value: any) => {
+    if (field.startsWith('administrator.')) {
+      const adminField = field.split('.')[1];
+      setFormData(prev => ({
+        ...prev,
+        administrator: {
+          ...prev.administrator,
+          [adminField]: value,
+        }
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    }
+  };
+
+  const validateForm = () => {
+    // Validate company fields
+    if (!formData.name || formData.name.length < 2) {
+      return 'Company name must be at least 2 characters';
+    }
+    if (!formData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      return 'Valid company email is required';
+    }
+
+    // Validate administrator (only for new companies)
+    if (!company) {
+      if (!formData.administrator.fullName || formData.administrator.fullName.length < 2) {
+        return 'Administrator full name is required';
+      }
+      if (!formData.administrator.adminEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.administrator.adminEmail)) {
+        return 'Valid administrator email is required';
+      }
+      if (!formData.administrator.password || formData.administrator.password.length < 8) {
+        return 'Password must be at least 8 characters';
+      }
+      if (formData.administrator.password !== formData.administrator.confirmPassword) {
+        return 'Passwords do not match';
+      }
+    }
+
+    return null;
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    
+    const error = validateForm();
+    if (error) {
+      toast({
+        title: 'Validation Error',
+        description: error,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setLoading(true);
 
-    const formData = new FormData(e.currentTarget);
-    
     try {
       await onSubmit(formData);
     } finally {
@@ -483,63 +559,203 @@ function CompanyForm({ company, onSubmit }: CompanyFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="name">Company Name</Label>
-        <Input
-          id="name"
-          name="name"
-          defaultValue={company?.name || ''}
-          placeholder="Enter company name"
-          required
-        />
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Section 1: Company Information */}
+      <div className="space-y-4">
+        <div className="border-b pb-2">
+          <h3 className="text-lg font-semibold">Company Information</h3>
+          <p className="text-sm text-muted-foreground">Enter the company details</p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="name">Company Name *</Label>
+          <Input
+            id="name"
+            value={formData.name}
+            onChange={(e) => handleChange('name', e.target.value)}
+            placeholder="Enter company name"
+            required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="email">Company Email *</Label>
+          <Input
+            id="email"
+            type="email"
+            value={formData.email}
+            onChange={(e) => handleChange('email', e.target.value)}
+            placeholder="contact@company.com"
+            required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="phone">Phone</Label>
+          <Input
+            id="phone"
+            value={formData.phone}
+            onChange={(e) => handleChange('phone', e.target.value)}
+            placeholder="+1-555-0123"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="website">Website</Label>
+          <Input
+            id="website"
+            value={formData.website}
+            onChange={(e) => handleChange('website', e.target.value)}
+            placeholder="https://company.com"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="address">Address</Label>
+          <Input
+            id="address"
+            value={formData.address}
+            onChange={(e) => handleChange('address', e.target.value)}
+            placeholder="Enter company address"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="status">Status</Label>
+            <Select value={formData.status} onValueChange={(value) => handleChange('status', value)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ACTIVE">Active</SelectItem>
+                <SelectItem value="INACTIVE">Inactive</SelectItem>
+                <SelectItem value="SUSPENDED">Suspended</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="subscriptionPlan">Subscription Plan</Label>
+            <Select value={formData.subscriptionPlan} onValueChange={(value) => handleChange('subscriptionPlan', value)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="BASIC">Basic</SelectItem>
+                <SelectItem value="PROFESSIONAL">Professional</SelectItem>
+                <SelectItem value="ENTERPRISE">Enterprise</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          name="email"
-          type="email"
-          defaultValue={company?.email || ''}
-          placeholder="Enter company email"
-          required
-        />
-      </div>
+      {/* Section 2: Company Administrator (only for new companies) */}
+      {!company && (
+        <div className="space-y-4">
+          <div className="border-b pb-2">
+            <h3 className="text-lg font-semibold">Company Administrator</h3>
+            <p className="text-sm text-muted-foreground">Create the admin account for this company</p>
+          </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="phone">Phone</Label>
-        <Input
-          id="phone"
-          name="phone"
-          defaultValue={company?.phone || ''}
-          placeholder="Enter company phone"
-        />
-      </div>
+          <div className="space-y-2">
+            <Label htmlFor="fullName">Admin Full Name *</Label>
+            <Input
+              id="fullName"
+              value={formData.administrator.fullName}
+              onChange={(e) => handleChange('administrator.fullName', e.target.value)}
+              placeholder="John Doe"
+              required
+            />
+          </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="website">Website</Label>
-        <Input
-          id="website"
-          name="website"
-          defaultValue={company?.website || ''}
-          placeholder="https://example.com"
-        />
-      </div>
+          <div className="space-y-2">
+            <Label htmlFor="adminEmail">Admin Email *</Label>
+            <Input
+              id="adminEmail"
+              type="email"
+              value={formData.administrator.adminEmail}
+              onChange={(e) => handleChange('administrator.adminEmail', e.target.value)}
+              placeholder="admin@company.com"
+              required
+            />
+          </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="address">Address</Label>
-        <Input
-          id="address"
-          name="address"
-          placeholder="Enter company address"
-        />
-      </div>
+          <div className="space-y-2">
+            <Label htmlFor="password">Password *</Label>
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                value={formData.administrator.password}
+                onChange={(e) => handleChange('administrator.password', e.target.value)}
+                placeholder="Minimum 8 characters"
+                required
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? (
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                )}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">Must be at least 8 characters long</p>
+          </div>
 
-      <div className="flex justify-end space-x-2 pt-4">
+          <div className="space-y-2">
+            <Label htmlFor="confirmPassword">Confirm Password *</Label>
+            <Input
+              id="confirmPassword"
+              type={showPassword ? 'text' : 'password'}
+              value={formData.administrator.confirmPassword}
+              onChange={(e) => handleChange('administrator.confirmPassword', e.target.value)}
+              placeholder="Re-enter password"
+              required
+            />
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="forcePasswordChange"
+                checked={formData.administrator.forcePasswordChange}
+                onChange={(e) => handleChange('administrator.forcePasswordChange', e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300"
+              />
+              <Label htmlFor="forcePasswordChange" className="text-sm font-normal cursor-pointer">
+                Force password change on first login
+              </Label>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="sendWelcomeEmail"
+                checked={formData.administrator.sendWelcomeEmail}
+                onChange={(e) => handleChange('administrator.sendWelcomeEmail', e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300"
+              />
+              <Label htmlFor="sendWelcomeEmail" className="text-sm font-normal cursor-pointer">
+                Send welcome email to administrator
+              </Label>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex justify-end space-x-2 pt-4 border-t">
         <Button type="submit" disabled={loading}>
           {loading && <Spinner className="mr-2 h-4 w-4" />}
-          {company ? 'Update' : 'Create'} Company
+          {company ? 'Update Company' : 'Create Company & Administrator'}
         </Button>
       </div>
     </form>

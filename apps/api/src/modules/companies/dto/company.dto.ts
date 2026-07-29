@@ -1,7 +1,42 @@
-import { IsString, IsEmail, IsOptional, IsBoolean, IsUrl, Length, Matches } from 'class-validator';
+import { IsString, IsEmail, IsOptional, IsBoolean, IsUrl, Length, Matches, MinLength, ValidateNested } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 
+// Company Administrator DTO
+export class CompanyAdministratorDto {
+  @ApiProperty({ description: 'Admin full name', example: 'John Doe' })
+  @IsString()
+  @Length(2, 200)
+  fullName: string;
+
+  @ApiProperty({ description: 'Admin email', example: 'admin@acmecorp.com' })
+  @IsEmail()
+  adminEmail: string;
+
+  @ApiProperty({ description: 'Admin password', example: 'SecurePass123!' })
+  @IsString()
+  @MinLength(8, { message: 'Password must be at least 8 characters long' })
+  password: string;
+
+  @ApiProperty({ description: 'Confirm password', example: 'SecurePass123!' })
+  @IsString()
+  @MinLength(8)
+  confirmPassword: string;
+
+  @ApiPropertyOptional({ description: 'Force password change on first login', example: true })
+  @IsOptional()
+  @IsBoolean()
+  forcePasswordChange?: boolean;
+
+  @ApiPropertyOptional({ description: 'Send welcome email', example: true })
+  @IsOptional()
+  @IsBoolean()
+  sendWelcomeEmail?: boolean;
+}
+
+// Updated Company DTO with Administrator
 export class CreateCompanyDto {
+  // Section 1: Company Information
   @ApiProperty({ description: 'Company name', example: 'Acme Corp' })
   @IsString()
   @Length(2, 255)
@@ -17,20 +52,36 @@ export class CreateCompanyDto {
   @Matches(/^\+?[\d\s\-\(\)]+$/, { message: 'Invalid phone number format' })
   phone?: string;
 
-  @ApiPropertyOptional({ description: 'Company address' })
-  @IsOptional()
-  @IsString()
-  address?: string;
-
   @ApiPropertyOptional({ description: 'Company website', example: 'https://acmecorp.com' })
   @IsOptional()
   @IsUrl()
   website?: string;
 
+  @ApiPropertyOptional({ description: 'Company address' })
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @ApiPropertyOptional({ description: 'Company logo path' })
+  @IsOptional()
+  @IsString()
+  logo?: string;
+
   @ApiPropertyOptional({ description: 'Company status', example: 'ACTIVE' })
   @IsOptional()
   @IsString()
   status?: string;
+
+  @ApiPropertyOptional({ description: 'Subscription plan', example: 'BASIC' })
+  @IsOptional()
+  @IsString()
+  subscriptionPlan?: string;
+
+  // Section 2: Company Administrator
+  @ApiProperty({ description: 'Company administrator details', type: CompanyAdministratorDto })
+  @ValidateNested()
+  @Type(() => CompanyAdministratorDto)
+  administrator: CompanyAdministratorDto;
 }
 
 export class UpdateCompanyDto {
