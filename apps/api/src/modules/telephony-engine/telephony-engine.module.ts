@@ -39,6 +39,11 @@ import { ExotelProvider } from './providers/exotel.provider';
 import { PlivoProvider } from './providers/plivo.provider';
 import { AsteriskProvider } from './providers/asterisk.provider';
 
+// Advanced Services
+import { AsteriskAMIService } from './services/asterisk-ami.service';
+import { SystemDiagnosticsService } from './services/system-diagnostics.service';
+import { TelephonyHealthController } from './telephony-health.controller';
+
 @Module({
   imports: [
     ConfigModule,
@@ -49,6 +54,7 @@ import { AsteriskProvider } from './providers/asterisk.provider';
     TelephonyEngineController,
     TelephonyWebhookController,
     GSMGatewayController,
+    TelephonyHealthController,
   ],
   providers: [
     // Main Manager
@@ -70,6 +76,10 @@ import { AsteriskProvider } from './providers/asterisk.provider';
     SIMManagerService,
     ConnectionManagerService,
 
+    // Advanced Services
+    AsteriskAMIService,
+    SystemDiagnosticsService,
+
     // Telephony Provider Implementations
     TwilioProvider,
     ExotelProvider,
@@ -85,6 +95,8 @@ import { AsteriskProvider } from './providers/asterisk.provider';
     GatewayManagerService,
     SIMManagerService,
     ConnectionManagerService,
+    AsteriskAMIService,
+    SystemDiagnosticsService,
   ],
 })
 export class TelephonyEngineModule {}

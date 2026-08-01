@@ -10,6 +10,39 @@ export class SIMManagerService {
     private readonly eventEmitter: EventEmitter2,
   ) {}
   async registerSIM(params: any) { return null; }
+  
+  /**
+   * Get all SIM cards for a company
+   */
+  async getAllSIMs(companyId: string) {
+    try {
+      const sims = await this.prisma.sIMCard.findMany({
+        where: {
+          companyId,
+          deletedAt: null,
+        },
+        include: {
+          gateway: {
+            select: {
+              id: true,
+              name: true,
+              ipAddress: true,
+              isOnline: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+
+      return sims;
+    } catch (error) {
+      this.logger.error(`Failed to get all SIMs: ${error.message}`);
+      throw error;
+    }
+  }
+  
   async selectBestSIM(companyId: string, gatewayId?: string) { return null; }
   async markSIMBusy(simId: string, callId: string) { return; }
   async markSIMAvailable(simId: string, callId: string, success: boolean) { return; }
