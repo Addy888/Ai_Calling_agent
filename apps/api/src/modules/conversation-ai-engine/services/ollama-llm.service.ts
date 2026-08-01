@@ -8,7 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import axios, { AxiosInstance } from 'axios';
 import { ErrorHandlerService, ErrorType } from './error-handler.service';
 
-interface GenerateOptions {
+export interface GenerateOptions {
   prompt: string;
   model?: string;
   temperature?: number;
@@ -17,7 +17,7 @@ interface GenerateOptions {
   system?: string;
 }
 
-interface GenerateResult {
+export interface GenerateResult {
   text: string;
   model: string;
   tokens: number;

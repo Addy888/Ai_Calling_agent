@@ -1,5 +1,5 @@
-﻿import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../../../common/prisma/prisma.service';
+import { Injectable, Logger } from '@nestjs/common';
+import { PrismaService } from '@/common/prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()

@@ -8,7 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import axios, { AxiosInstance } from 'axios';
 import { ErrorHandlerService, ErrorType } from './error-handler.service';
 
-interface TranscriptionResult {
+export interface TranscriptionResult {
   text: string;
   language: string;
   confidence: number;

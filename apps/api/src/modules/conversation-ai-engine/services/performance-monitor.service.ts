@@ -6,7 +6,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 
-interface PerformanceMetrics {
+export interface PerformanceMetrics {
   sttLatency: number;
   knowledgeLatency?: number;
   llmFirstTokenLatency: number;
@@ -16,7 +16,7 @@ interface PerformanceMetrics {
   timestamp: Date;
 }
 
-interface MetricsAggregation {
+export interface MetricsAggregation {
   count: number;
   avg: number;
   min: number;

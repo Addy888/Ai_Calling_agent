@@ -7,7 +7,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import { OllamaLLMService } from './ollama-llm.service';
 
-interface CallSummary {
+export interface CallSummary {
   sessionId: string;
   summary: string;
   intent: string;

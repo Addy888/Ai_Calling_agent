@@ -8,7 +8,7 @@ interface QuestionContext {
   previousQuestions?: string[];
 }
 
-interface Answer {
+export interface Answer {
   answer: string;
   confidence: number;
   sources: string[];
