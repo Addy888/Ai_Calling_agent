@@ -23,6 +23,10 @@ export class AuthService {
   async login(loginDto: LoginDto) {
     const { email, password } = loginDto;
 
+    console.log('🔐 LOGIN ATTEMPT');
+    console.log('  Email:', email);
+    console.log('  Password length:', password?.length);
+
     // Find user with company and roles
     const user = await this.prisma.user.findUnique({
       where: { email },
@@ -44,23 +48,62 @@ export class AuthService {
       },
     });
 
+    console.log('👤 USER LOOKUP RESULT:');
     if (!user) {
+      console.log('  ❌ User NOT FOUND');
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    console.log('  ✅ User found');
+    console.log('  User ID:', user.id);
+    console.log('  Email:', user.email);
+    console.log('  Name:', `${user.firstName} ${user.lastName}`);
+    console.log('  isActive:', user.isActive);
+    console.log('  deletedAt:', user.deletedAt || 'NULL');
+    console.log('  Company ID:', user.companyId);
+    console.log('  Company Name:', user.company?.name);
+    console.log('  Company isActive:', user.company?.isActive);
+    console.log('  Company deletedAt:', user.company?.deletedAt || 'NULL');
+    console.log('  Roles:', user.roles?.map((ur: any) => ur.role.slug).join(', ') || 'NONE');
+
+    // Check if user is soft-deleted
+    if (user.deletedAt) {
+      console.log('  ❌ FAIL: User is SOFT-DELETED');
+      throw new UnauthorizedException('Account has been deleted. Please contact support.');
+    }
+
     if (!user.isActive) {
+      console.log('  ❌ FAIL: User is NOT ACTIVE');
       throw new UnauthorizedException('Account is disabled');
     }
 
+    if (!user.company) {
+      console.log('  ❌ FAIL: Company NOT FOUND');
+      throw new UnauthorizedException('Company not found');
+    }
+
+    if (user.company.deletedAt) {
+      console.log('  ❌ FAIL: Company is SOFT-DELETED');
+      throw new UnauthorizedException('Company has been deleted. Please contact support.');
+    }
+
     if (!user.company.isActive) {
+      console.log('  ❌ FAIL: Company is NOT ACTIVE');
       throw new UnauthorizedException('Company is inactive');
     }
 
     // Verify password
+    console.log('🔑 PASSWORD VERIFICATION:');
+    console.log('  Stored hash:', user.password.substring(0, 20) + '...');
     const isPasswordValid = await bcrypt.compare(password, user.password);
+    console.log('  Result:', isPasswordValid ? '✅ VALID' : '❌ INVALID');
+
     if (!isPasswordValid) {
+      console.log('  ❌ FAIL: Password does not match');
       throw new UnauthorizedException('Invalid credentials');
     }
+
+    console.log('✅ LOGIN SUCCESSFUL');
 
     // Update last login
     await this.prisma.user.update({
