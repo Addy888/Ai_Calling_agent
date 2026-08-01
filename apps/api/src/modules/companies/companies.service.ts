@@ -17,10 +17,23 @@ export class CompaniesService {
   async create(createCompanyDto: CreateCompanyDto) {
     const { administrator, ...companyData } = createCompanyDto;
 
+    console.log('🏢 COMPANY CREATION STARTED');
+    console.log('   Company Data:', { name: companyData.name, email: companyData.email });
+    console.log('   Admin Data:', { 
+      fullName: administrator.fullName, 
+      adminEmail: administrator.adminEmail,
+    });
+
     // Validate passwords match
     if (administrator.password !== administrator.confirmPassword) {
       throw new BadRequestException('Passwords do not match');
     }
+
+    // IMPORTANT: Use company email as the admin user email for simplified login
+    // This allows company admins to log in with the company email directly
+    const adminEmail = companyData.email; // Use company email for admin login
+    
+    console.log('   🔑 Admin Login Email:', adminEmail);
 
     // Check if company email already exists (exclude soft-deleted companies)
     const existingCompany = await this.prisma.company.findFirst({
@@ -56,17 +69,18 @@ export class CompaniesService {
     // Check if admin email already exists (exclude soft-deleted users)
     const existingUser = await this.prisma.user.findFirst({
       where: { 
-        email: administrator.adminEmail,
+        email: adminEmail,
         deletedAt: null,
       },
     });
 
     if (existingUser) {
-      throw new ConflictException(`User with email '${administrator.adminEmail}' already exists`);
+      throw new ConflictException(`User with email '${adminEmail}' already exists`);
     }
 
     // Hash password
     const hashedPassword = await bcrypt.hash(administrator.password, 10);
+    console.log('   🔒 Password hashed successfully');
 
     // Generate unique company code
     const companyCode = await this.generateCompanyCode();
@@ -75,9 +89,20 @@ export class CompaniesService {
     const [firstName, ...lastNameParts] = administrator.fullName.trim().split(' ');
     const lastName = lastNameParts.join(' ') || firstName;
 
+    console.log('🏢 COMPANY CREATION STARTED');
+    console.log('   Company Data:', { name: companyData.name, email: companyData.email });
+    console.log('   Admin Data:', { 
+      fullName: administrator.fullName, 
+      adminEmail: administrator.adminEmail,
+      firstName,
+      lastName 
+    });
+
     try {
       // Execute everything in a transaction
       const result = await this.prisma.$transaction(async (prisma) => {
+        console.log('📝 Step 1: Creating Company...');
+        
         // 1. Create Company
         const company = await prisma.company.create({
           data: {
@@ -86,20 +111,47 @@ export class CompaniesService {
           },
         });
 
+        console.log('✅ Company Created:', {
+          id: company.id,
+          name: company.name,
+          email: company.email,
+          isActive: company.isActive,
+          status: company.status,
+        });
+
+        console.log('📝 Step 2: Finding company-admin role...');
+        
         // 2. Get company-admin role
         const companyAdminRole = await prisma.role.findUnique({
           where: { slug: 'company-admin' },
         });
 
         if (!companyAdminRole) {
+          console.error('❌ company-admin role NOT FOUND!');
           throw new BadRequestException('Company admin role not found. Please run database seed.');
         }
 
-        // 3. Create Company Admin User
+        console.log('✅ Role Found:', {
+          id: companyAdminRole.id,
+          name: companyAdminRole.name,
+          slug: companyAdminRole.slug,
+        });
+
+        console.log('📝 Step 3: Creating Company Admin User...');
+        console.log('   User data to create:', {
+          companyId: company.id,
+          email: adminEmail,
+          firstName,
+          lastName,
+          status: 'ACTIVE',
+          isActive: true,
+        });
+
+        // 3. Create Company Admin User with COMPANY EMAIL for simplified login
         const adminUser = await prisma.user.create({
           data: {
             companyId: company.id,
-            email: administrator.adminEmail,
+            email: adminEmail, // Using company email for admin login
             password: hashedPassword,
             firstName,
             lastName,
@@ -110,6 +162,19 @@ export class CompaniesService {
           },
         });
 
+        console.log('✅ Company Admin User Created:', {
+          id: adminUser.id,
+          email: adminUser.email,
+          firstName: adminUser.firstName,
+          lastName: adminUser.lastName,
+          companyId: adminUser.companyId,
+          isActive: adminUser.isActive,
+          status: adminUser.status,
+          passwordHash: adminUser.password.substring(0, 20) + '...',
+        });
+
+        console.log('📝 Step 4: Assigning Company Admin Role...');
+        
         // 4. Assign Company Admin Role
         await prisma.userRole.create({
           data: {
@@ -118,6 +183,10 @@ export class CompaniesService {
           },
         });
 
+        console.log('✅ Role Assigned: company-admin → User ' + adminUser.email);
+
+        console.log('📝 Steps 5-10: Creating default resources...');
+        
         // 5. Create Default Settings
         await prisma.setting.createMany({
           data: [
@@ -142,6 +211,8 @@ export class CompaniesService {
           ],
         });
 
+        console.log('✅ Default settings created');
+
         // 6. Contact Groups are not part of the current schema - skip
 
         // 7. Create Default Knowledge Base
@@ -155,6 +226,8 @@ export class CompaniesService {
             createdBy: adminUser.id,
           },
         });
+
+        console.log('✅ Default knowledge base created');
 
         // 8. Create Default AI Agent
         const defaultPrompt = await prisma.prompt.findFirst({
@@ -176,6 +249,8 @@ export class CompaniesService {
           },
         });
 
+        console.log('✅ Default AI agent created');
+
         // 9. Create Default Prompt Folder (using tags for now)
         await prisma.prompt.create({
           data: {
@@ -188,6 +263,8 @@ export class CompaniesService {
             createdBy: adminUser.id,
           },
         });
+
+        console.log('✅ Default prompt created');
 
         // 10. Create Default Script Folder
         await prisma.script.create({
@@ -204,6 +281,10 @@ export class CompaniesService {
           },
         });
 
+        console.log('✅ Default script created');
+
+        console.log('📝 Step 11-12: Creating audit logs...');
+        
         // 11. Create Audit Log
         await prisma.auditLog.create({
           data: {
@@ -237,11 +318,28 @@ export class CompaniesService {
           },
         });
 
+        console.log('✅ Audit logs created');
+
         // TODO: Send welcome email if requested
         if (administrator.sendWelcomeEmail) {
           // Email service integration
           console.log(`Welcome email should be sent to: ${administrator.adminEmail}`);
         }
+
+        console.log('🎉 TRANSACTION COMPLETE - All steps successful');
+        console.log('');
+        console.log('🔑 LOGIN CREDENTIALS:');
+        console.log(`   Email: ${adminEmail}`);
+        console.log(`   Password: [As provided during creation]`);
+        console.log(`   Role: Company Admin`);
+        console.log('');
+        console.log('📊 Database Records:');
+        console.log(`   Company ID: ${company.id}`);
+        console.log(`   Company Email: ${company.email}`);
+        console.log(`   Admin User ID: ${adminUser.id}`);
+        console.log(`   Admin User Email: ${adminUser.email}`);
+        console.log(`   Match: ${company.email === adminUser.email ? '✅ YES' : '❌ NO'}`);
+        console.log('');
 
         return {
           company,
@@ -252,15 +350,33 @@ export class CompaniesService {
             lastName: adminUser.lastName,
           },
           companyCode,
+          loginCredentials: {
+            email: adminEmail,
+            message: 'Use this email to log in as Company Admin',
+          },
         };
       });
+
+      console.log('✅ COMPANY CREATION SUCCESS');
+      console.log('   Company ID:', result.company.id);
+      console.log('   Company Name:', result.company.name);
+      console.log('   Company Email:', result.company.email);
+      console.log('   Admin User ID:', result.adminUser.id);
+      console.log('   Admin Login Email:', result.adminUser.email);
+      console.log('   📧 Login with:', result.loginCredentials.email);
+      console.log('');
 
       return {
         success: true,
         data: result,
-        message: 'Company and administrator created successfully. Admin can now log in.',
+        message: `Company and administrator created successfully. Login with: ${result.loginCredentials.email}`,
       };
     } catch (error: any) {
+      console.error('❌ COMPANY CREATION FAILED');
+      console.error('   Error Name:', error?.name);
+      console.error('   Error Code:', error?.code);
+      console.error('   Error Message:', error?.message);
+      
       // Transaction will auto-rollback on error
       if (error instanceof BadRequestException || error instanceof ConflictException) {
         throw error;
@@ -272,7 +388,7 @@ export class CompaniesService {
         const fieldValue = error?.meta?.target?.[0] === 'email' ? companyData.email : 'unknown';
         
         // Log complete Prisma error for debugging
-        console.error('Prisma P2002 Unique Constraint Error:', {
+        console.error('❌ Prisma P2002 Unique Constraint Error:', {
           code: error.code,
           meta: error.meta,
           message: error.message,
@@ -286,7 +402,7 @@ export class CompaniesService {
       }
 
       // Log other errors
-      console.error('Company creation error:', {
+      console.error('❌ Complete Error Details:', {
         errorName: error?.name,
         errorCode: error?.code,
         errorMessage: error?.message,

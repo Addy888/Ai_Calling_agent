@@ -52,6 +52,35 @@ interface RecentCall {
   createdAt: string;
 }
 
+/**
+ * Safely extracts an array from various API response shapes
+ * Handles: direct arrays, paginated responses, nested data structures
+ */
+function safeExtractArray<T>(data: any, limit?: number): T[] {
+  let result: T[] = [];
+  
+  // Case 1: Direct array
+  if (Array.isArray(data)) {
+    result = data;
+  }
+  // Case 2: Paginated response with items array { items: [], meta: {} }
+  else if (data?.items && Array.isArray(data.items)) {
+    result = data.items;
+  }
+  // Case 3: Nested data array { data: [] }
+  else if (data?.data && Array.isArray(data.data)) {
+    result = data.data;
+  }
+  // Case 4: null, undefined, or other non-array values
+  else {
+    console.warn('⚠️ Unexpected API response shape:', typeof data, data);
+    result = [];
+  }
+  
+  // Apply limit if specified
+  return limit ? result.slice(0, limit) : result;
+}
+
 export default function CompanyDashboardPage() {
   const [stats, setStats] = useState<DashboardStats>({
     totalContacts: 0,
@@ -96,8 +125,8 @@ export default function CompanyDashboardPage() {
         api.get('/scripts', { params: { limit: 1 } }).catch(() => ({ data: { data: { meta: { total: 0 } } } })),
         api.get('/prompts', { params: { limit: 1 } }).catch(() => ({ data: { data: { meta: { total: 0 } } } })),
         api.get('/ai-agents', { params: { limit: 1 } }).catch(() => ({ data: { data: { length: 0 } } })),
-        api.get('/activity-logs', { params: { limit: 10 } }).catch(() => ({ data: { data: [] } })),
-        api.get('/calls', { params: { limit: 10, sortBy: 'createdAt', sortOrder: 'desc' } }).catch(() => ({ data: { data: { items: [] } } })),
+        api.get('/activity-logs', { params: { limit: 5 } }).catch(() => ({ data: { data: { items: [] } } })),
+        api.get('/calls', { params: { limit: 5, sortBy: 'createdAt', sortOrder: 'desc' } }).catch(() => ({ data: { data: { items: [] } } })),
       ]);
 
       // Get active campaigns count
@@ -139,8 +168,12 @@ export default function CompanyDashboardPage() {
         successRate: successRate,
       });
 
-      setRecentActivities(activitiesRes.data.data?.slice(0, 5) || []);
-      setRecentCalls(recentCallsRes.data.data?.items?.slice(0, 5) || []);
+      // Safely extract activities and calls using utility function
+      const activities = safeExtractArray<RecentActivity>(activitiesRes.data.data, 5);
+      const calls = safeExtractArray<RecentCall>(recentCallsRes.data.data, 5);
+      
+      setRecentActivities(activities);
+      setRecentCalls(calls);
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
     } finally {
