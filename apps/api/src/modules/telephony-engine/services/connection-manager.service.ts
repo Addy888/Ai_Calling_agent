@@ -332,6 +332,8 @@ export class ConnectionManagerService implements OnModuleInit, OnModuleDestroy {
         isConnected: false,
         isAuthenticated: false,
         status: 'NOT_FOUND',
+        host: 'unknown',
+        port: 0,
       };
     }
 
@@ -488,10 +490,10 @@ interface AsteriskConnection {
 export interface ConnectionStatus {
   gatewayId: string;
   isConnected: boolean;
-  isAuthenticated?: boolean;
+  isAuthenticated: boolean;
   status: 'CONNECTED' | 'DISCONNECTED' | 'NOT_FOUND';
-  host?: string;
-  port?: number;
+  host: string;
+  port: number;
   lastConnected?: Date | null;
   lastDisconnected?: Date | null;
   reconnectAttempts?: number;

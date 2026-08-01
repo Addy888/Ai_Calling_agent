@@ -28,16 +28,41 @@ export class CompaniesService {
     });
 
     if (existingCompany) {
-      throw new ConflictException('Company with this email already exists');
+      throw new ConflictException(`Company with email '${companyData.email}' already exists`);
     }
 
-    // Check if admin email already exists
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email: administrator.adminEmail },
+    // Check if email is from a soft-deleted company
+    const softDeletedCompany = await this.prisma.company.findFirst({
+      where: { 
+        email: companyData.email, 
+        deletedAt: { not: null } 
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        deletedAt: true,
+      },
+    });
+
+    if (softDeletedCompany) {
+      throw new ConflictException(
+        `Email '${companyData.email}' was previously used by company '${softDeletedCompany.name}' ` +
+        `(deleted on ${softDeletedCompany.deletedAt.toISOString().split('T')[0]}). ` +
+        `Please contact support to restore the old company or permanently remove it.`
+      );
+    }
+
+    // Check if admin email already exists (exclude soft-deleted users)
+    const existingUser = await this.prisma.user.findFirst({
+      where: { 
+        email: administrator.adminEmail,
+        deletedAt: null,
+      },
     });
 
     if (existingUser) {
-      throw new ConflictException('User with this email already exists');
+      throw new ConflictException(`User with email '${administrator.adminEmail}' already exists`);
     }
 
     // Hash password
@@ -244,8 +269,29 @@ export class CompaniesService {
       // Handle Prisma unique constraint violations (P2002)
       if (error?.code === 'P2002') {
         const field = error?.meta?.target?.[0] || 'field';
-        throw new ConflictException(`A record with this ${field} already exists`);
+        const fieldValue = error?.meta?.target?.[0] === 'email' ? companyData.email : 'unknown';
+        
+        // Log complete Prisma error for debugging
+        console.error('Prisma P2002 Unique Constraint Error:', {
+          code: error.code,
+          meta: error.meta,
+          message: error.message,
+          clientVersion: error.clientVersion,
+        });
+
+        throw new ConflictException(
+          `A record with ${field} '${fieldValue}' already exists. ` +
+          `This might be from a previously deleted company. Please contact support for assistance.`
+        );
       }
+
+      // Log other errors
+      console.error('Company creation error:', {
+        errorName: error?.name,
+        errorCode: error?.code,
+        errorMessage: error?.message,
+        errorStack: error?.stack,
+      });
 
       throw new BadRequestException(`Failed to create company: ${error?.message || 'Transaction rolled back.'}`);
     }
@@ -374,10 +420,45 @@ export class CompaniesService {
       throw new NotFoundException('Company not found');
     }
 
-    // Soft delete
+    // Soft delete with email modification to free up the email for future use
+    // This allows the same email to be used for a new company registration
+    const timestamp = Date.now();
+    const modifiedEmail = `${company.email}__deleted_${timestamp}`;
+
     await this.prisma.company.update({
       where: { id },
-      data: { deletedAt: new Date() },
+      data: { 
+        deletedAt: new Date(),
+        email: modifiedEmail, // Modify email to release unique constraint
+      },
+    });
+
+    // Also soft-delete all users in this company
+    await this.prisma.user.updateMany({
+      where: { 
+        companyId: id,
+        deletedAt: null,
+      },
+      data: { 
+        deletedAt: new Date(),
+      },
+    });
+
+    // Create audit log for deletion
+    await this.prisma.auditLog.create({
+      data: {
+        companyId: id,
+        action: 'COMPANY_DELETED',
+        entityType: 'companies',
+        entityId: id,
+        metadata: {
+          companyId: id,
+          companyName: company.name,
+          originalEmail: company.email,
+          modifiedEmail,
+          description: `Company ${company.name} soft-deleted. Email modified to ${modifiedEmail} to allow reuse.`,
+        },
+      },
     });
 
     return {
