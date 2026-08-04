@@ -125,6 +125,60 @@ export class CampaignCallDispatcherService implements OnModuleInit, OnModuleDest
     try {
       this.logger.log(`🔌 Connecting to Redis at ${redisHost}:${redisPort}...`);
 
+      // First, check Redis version using ioredis directly
+      const { default: Redis } = await import('ioredis');
+      const testClient = new Redis({
+        host: redisHost,
+        port: redisPort,
+        password: redisPassword || undefined,
+        connectTimeout: 5000,
+        maxRetriesPerRequest: 1,
+        lazyConnect: true,
+      });
+
+      try {
+        await testClient.connect();
+        const info = await testClient.info('server');
+        const versionMatch = info.match(/redis_version:(\d+)\.(\d+)\.(\d+)/);
+        
+        if (versionMatch) {
+          const [, major, minor, patch] = versionMatch;
+          const version = `${major}.${minor}.${patch}`;
+          this.logger.log(`ℹ️  Redis version: ${version}`);
+          
+          const majorVersion = parseInt(major);
+          if (majorVersion < 5) {
+            this.logger.error('═══════════════════════════════════════════════════════');
+            this.logger.error('❌ REDIS VERSION TOO OLD');
+            this.logger.error('═══════════════════════════════════════════════════════');
+            this.logger.error(`Current Redis version: ${version}`);
+            this.logger.error(`Required Redis version: >= 5.0.0`);
+            this.logger.error(`BullMQ requires Redis 5.0.0 or higher`);
+            this.logger.error('');
+            this.logger.error('⚠️  BullMQ Status: DISABLED');
+            this.logger.error('⚠️  Queue features unavailable');
+            this.logger.error('✅ Application continues with in-memory fallback');
+            this.logger.error('');
+            this.logger.error('To fix:');
+            this.logger.error('  1. Upgrade Redis to version 5.0.0 or higher');
+            this.logger.error('  2. Windows: Download from https://github.com/tporadowski/redis/releases');
+            this.logger.error('  3. Linux: Use package manager to upgrade');
+            this.logger.error('  4. Restart this application');
+            this.logger.error('═══════════════════════════════════════════════════════');
+            
+            await testClient.quit();
+            this.callQueue = null;
+            this.redisConnected = false;
+            return; // Don't retry for version incompatibility
+          }
+        }
+        
+        await testClient.quit();
+      } catch (versionError) {
+        await testClient.quit();
+        throw versionError;
+      }
+
       this.callQueue = new Queue('campaign-calls', {
         connection: {
           host: redisHost,
@@ -147,16 +201,16 @@ export class CampaignCallDispatcherService implements OnModuleInit, OnModuleDest
             delay: 5000,
           },
           removeOnComplete: {
-            age: 86400, // Keep for 24 hours
+            age: 86400,
             count: 1000,
           },
           removeOnFail: {
-            age: 604800, // Keep for 7 days
+            age: 604800,
           },
         },
       });
 
-      // Test connection by adding a dummy job and removing it
+      // Test connection
       try {
         const testJob = await this.callQueue.add('test', {}, { 
           jobId: 'connection-test',
@@ -174,14 +228,16 @@ export class CampaignCallDispatcherService implements OnModuleInit, OnModuleDest
       }
     } catch (error) {
       this.redisConnected = false;
-      this.logger.error(`❌ Failed to initialize BullMQ queue: ${error.message}`);
-      this.logger.warn('⚠️ Campaign dispatcher will operate in degraded mode without queue');
-      this.logger.warn('⚠️ Please ensure Redis is running and accessible at ' + redisHost + ':' + redisPort);
       
-      // Schedule reconnection attempt
-      this.scheduleReconnect();
+      if (!error.message.includes('version')) {
+        this.logger.error(`❌ Failed to initialize BullMQ queue: ${error.message}`);
+        this.logger.warn('⚠️  Campaign dispatcher will operate in degraded mode without queue');
+        this.logger.warn('⚠️  Please ensure Redis 5+ is running and accessible at ' + redisHost + ':' + redisPort);
+        
+        // Schedule reconnection attempt only if not a version issue
+        this.scheduleReconnect();
+      }
       
-      // Don't throw - allow app to continue without Redis
       this.callQueue = null;
     }
   }

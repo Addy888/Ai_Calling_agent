@@ -55,6 +55,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { VoiceStreamingModule } from './modules/voice-streaming/voice-streaming.module';
 import { TelephonyProfileModule } from './modules/telephony-profile/telephony-profile.module';
 import { CampaignContactsModule } from './modules/campaign-contacts/campaign-contacts.module';
+import { HealthModule } from './modules/health/health.module';
 // import { GSMGatewayModule } from './modules/gsm-gateway/gsm-gateway.module'; // TODO: Fix compilation errors
 
 @Module({
@@ -117,6 +118,7 @@ import { CampaignContactsModule } from './modules/campaign-contacts/campaign-con
     VoiceStreamingModule,
     TelephonyProfileModule,
     CampaignContactsModule,
+    HealthModule,
     // GSMGatewayModule, // TODO: Fix compilation errors
   ],
   providers: [

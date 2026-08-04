@@ -83,8 +83,12 @@ export class AsteriskProductionAMIService implements OnModuleInit, OnModuleDestr
   // Reconnection
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 10;
-  private reconnectDelay = 5000;
   private reconnectTimer: NodeJS.Timeout | null = null;
+  private lastConnectionAttempt: Date | null = null;
+  private lastErrorReason: string = '';
+  
+  // Connection state
+  private connectionState: 'ONLINE' | 'OFFLINE' | 'CONNECTING' | 'ERROR' = 'OFFLINE';
   
   // Buffer for AMI messages
   private buffer = '';
@@ -110,13 +114,8 @@ export class AsteriskProductionAMIService implements OnModuleInit, OnModuleDestr
     this.logger.log('🚀 Asterisk Production AMI Service starting...');
     await this.loadConfiguration();
     
-    // Don't await connect - let it run in background
-    // Application should start even if Asterisk is unavailable
-    this.connect().catch((error) => {
-      this.logger.error(`❌ Initial Asterisk connection failed: ${error.message}`);
-      this.logger.warn('⚠️  Asterisk AMI will retry connection in background');
-      this.logger.warn('⚠️  Application will continue without telephony features');
-    });
+    // Start connection in background - don't block application startup
+    this.attemptConnection();
   }
 
   async onModuleDestroy() {
@@ -147,50 +146,44 @@ export class AsteriskProductionAMIService implements OnModuleInit, OnModuleDestr
    */
   async connect(): Promise<void> {
     if (this.connected) {
-      this.logger.warn('Already connected to Asterisk');
       return;
     }
 
+    this.connectionState = 'CONNECTING';
+
     return new Promise((resolve, reject) => {
-      this.logger.log(`🔌 Connecting to Asterisk AMI at ${this.host}:${this.port}...`);
-      this.logger.log(`   Host: ${this.host}`);
-      this.logger.log(`   Port: ${this.port} (AMI port, not SIP)`);
-      this.logger.log(`   Username: ${this.username}`);
+      const socket = new net.Socket();
+      socket.setKeepAlive(true, 60000);
+      socket.setTimeout(10000); // 10 second timeout
 
-      this.socket = new net.Socket();
-      this.socket.setKeepAlive(true, 60000);
-      this.socket.setTimeout(10000); // Reduced to 10s for faster failure detection
-
-      let greeterReceived = false;
       let tcpConnected = false;
+      let greeterReceived = false;
 
       // Connection success
-      this.socket.on('connect', () => {
+      socket.on('connect', () => {
         tcpConnected = true;
-        this.logger.log(`✅ TCP connected to ${this.host}:${this.port}`);
         this.connected = true;
         this.reconnectAttempts = 0;
-        // Wait for Asterisk greeter message before sending login
+        this.socket = socket;
+        // Wait for greeter before authentication
       });
 
       // Data received
-      this.socket.on('data', (data: Buffer) => {
+      socket.on('data', (data: Buffer) => {
         const dataStr = data.toString();
         
-        // Log first message received (should be Asterisk greeter)
-        if (!greeterReceived) {
-          this.logger.log(`📨 Received Asterisk greeter: ${dataStr.substring(0, 100).replace(/\r\n/g, ' ')}`);
+        // Only process greeter if TCP is connected
+        if (!greeterReceived && tcpConnected) {
           greeterReceived = true;
           
           // Send login after receiving greeter
-          this.logger.log(`🔐 Sending login credentials...`);
           this.login()
             .then(() => {
-              this.logger.log(`✅ Login credentials sent`);
+              // Login sent successfully
             })
             .catch((error) => {
-              this.logger.error(`❌ Failed to send login: ${error.message}`);
-              this.socket?.destroy();
+              this.lastErrorReason = `Login failed: ${error.message}`;
+              socket.destroy();
               reject(error);
             });
         }
@@ -199,112 +192,42 @@ export class AsteriskProductionAMIService implements OnModuleInit, OnModuleDestr
       });
 
       // Error - Most critical handler for TCP connection failures
-      this.socket.on('error', (error: NodeJS.ErrnoException) => {
+      socket.on('error', (error: NodeJS.ErrnoException) => {
         if (!tcpConnected) {
-          // TCP connection never established
-          this.logger.error('═══════════════════════════════════════════════════════');
-          this.logger.error('❌ ASTERISK AMI TCP CONNECTION FAILED');
-          this.logger.error('═══════════════════════════════════════════════════════');
-          this.logger.error(`Host: ${this.host}`);
-          this.logger.error(`Port: ${this.port}`);
-          this.logger.error(`Error: ${error.message}`);
-          this.logger.error(`Code: ${error.code || 'N/A'}`);
-          this.logger.error('');
-          
-          if (error.code === 'ECONNREFUSED') {
-            this.logger.error('🔍 Diagnostic: Connection Refused');
-            this.logger.error('   Possible causes:');
-            this.logger.error('   1. Asterisk server is not running');
-            this.logger.error('   2. AMI is not enabled in manager.conf');
-            this.logger.error('   3. Firewall blocking port ' + this.port);
-            this.logger.error('   4. Wrong IP address: ' + this.host);
-            this.logger.error('   5. Wrong port: ' + this.port + ' (should be AMI port, not SIP 5060/5061)');
-          } else if (error.code === 'ETIMEDOUT') {
-            this.logger.error('🔍 Diagnostic: Connection Timeout');
-            this.logger.error('   Possible causes:');
-            this.logger.error('   1. Network connectivity issue');
-            this.logger.error('   2. Firewall dropping packets');
-            this.logger.error('   3. Host unreachable: ' + this.host);
-            this.logger.error('   4. Asterisk server not responding');
-          } else if (error.code === 'EHOSTUNREACH') {
-            this.logger.error('🔍 Diagnostic: Host Unreachable');
-            this.logger.error('   Possible causes:');
-            this.logger.error('   1. Wrong IP address: ' + this.host);
-            this.logger.error('   2. Network routing issue');
-            this.logger.error('   3. Host is offline');
-          } else if (error.code === 'ENETUNREACH') {
-            this.logger.error('🔍 Diagnostic: Network Unreachable');
-            this.logger.error('   Possible causes:');
-            this.logger.error('   1. No network connectivity');
-            this.logger.error('   2. Wrong network configuration');
-          }
-          
-          this.logger.error('');
-          this.logger.error('⚠️  Asterisk AMI Status: OFFLINE');
-          this.logger.error(`⏳ Will retry connection in ${this.getNextRetryDelay()}ms`);
-          this.logger.error('✅ Application continues without telephony features');
-          this.logger.error('═══════════════════════════════════════════════════════');
-        } else {
-          // Connection was established but failed later
-          this.logger.error(`❌ Connection error after TCP connect: ${error.message}`);
+          // TCP connection never established - store reason and reject
+          this.lastErrorReason = error.code || error.message;
+          this.connectionState = 'OFFLINE';
         }
         
         this.connected = false;
         this.authenticated = false;
-        this.socket?.destroy();
+        socket.destroy();
         reject(error);
       });
 
       // Closed
-      this.socket.on('close', () => {
-        if (tcpConnected) {
-          this.logger.warn('⚠️  Asterisk AMI connection closed');
-        }
+      socket.on('close', () => {
         this.connected = false;
         this.authenticated = false;
+        this.socket = null;
+        this.connectionState = 'OFFLINE';
         this.scheduleReconnect();
       });
 
       // Timeout
-      this.socket.on('timeout', () => {
-        this.logger.error('═══════════════════════════════════════════════════════');
-        this.logger.error('❌ ASTERISK AMI SOCKET TIMEOUT');
-        this.logger.error('═══════════════════════════════════════════════════════');
-        this.logger.error(`Host: ${this.host}:${this.port}`);
-        this.logger.error(`TCP Connected: ${tcpConnected}`);
-        this.logger.error(`Greeter Received: ${greeterReceived}`);
-        this.logger.error(`Authenticated: ${this.authenticated}`);
-        this.logger.error('');
-        
-        if (!tcpConnected) {
-          this.logger.error('🔍 Diagnostic: TCP connection timeout');
-          this.logger.error('   The server is not responding on port ' + this.port);
-        } else if (!greeterReceived) {
-          this.logger.error('🔍 Diagnostic: No greeter message');
-          this.logger.error('   This is NOT an AMI port!');
-          this.logger.error('   Expected AMI port: 5038');
-          this.logger.error('   Current port: ' + this.port);
-        } else if (!this.authenticated) {
-          this.logger.error('🔍 Diagnostic: Authentication timeout');
-          this.logger.error('   Check credentials in manager.conf');
-        }
-        
-        this.logger.error('');
-        this.logger.error('⚠️  Asterisk AMI Status: OFFLINE');
-        this.logger.error('✅ Application continues without telephony features');
-        this.logger.error('═══════════════════════════════════════════════════════');
-        
-        this.socket?.destroy();
+      socket.on('timeout', () => {
+        this.lastErrorReason = 'Socket timeout';
+        this.connectionState = 'OFFLINE';
+        socket.destroy();
         reject(new Error('Socket timeout'));
       });
 
       // Connect - This is where TCP connection is attempted
-      this.logger.log(`📡 Attempting TCP connection to ${this.host}:${this.port}...`);
-      
       try {
-        this.socket.connect(this.port, this.host);
+        socket.connect(this.port, this.host);
       } catch (error) {
-        this.logger.error(`❌ Failed to initiate connection: ${error.message}`);
+        this.lastErrorReason = error.message;
+        this.connectionState = 'OFFLINE';
         reject(error);
         return;
       }
@@ -312,8 +235,8 @@ export class AsteriskProductionAMIService implements OnModuleInit, OnModuleDestr
       // Wait for authentication
       const authTimeout = setTimeout(() => {
         if (!this.authenticated) {
-          this.logger.error('❌ Authentication timeout after 10 seconds');
-          this.socket?.destroy();
+          this.lastErrorReason = 'Authentication timeout';
+          socket.destroy();
           reject(new Error('Authentication timeout'));
         }
       }, 10000);
@@ -322,10 +245,10 @@ export class AsteriskProductionAMIService implements OnModuleInit, OnModuleDestr
         if (this.authenticated) {
           clearTimeout(authTimeout);
           this.startPing();
-          this.logger.log('✅ Asterisk Production AMI ready');
-          this.logger.log(`   Successfully connected to AMI at ${this.host}:${this.port}`);
+          this.connectionState = 'ONLINE';
+          this.lastErrorReason = '';
           resolve();
-        } else if (this.socket && this.socket.destroyed) {
+        } else if (socket.destroyed) {
           clearTimeout(authTimeout);
           // Socket destroyed, stop waiting
         } else {
@@ -557,19 +480,13 @@ export class AsteriskProductionAMIService implements OnModuleInit, OnModuleDestr
     activeChannels: number;
     lastPing: Date;
     uptime: number;
-    status: 'ONLINE' | 'OFFLINE' | 'CONNECTING';
+    status: 'ONLINE' | 'OFFLINE' | 'CONNECTING' | 'ERROR';
     reconnectAttempts: number;
     maxReconnectAttempts: number;
     nextRetryIn?: number;
+    lastAttempt?: Date;
+    reason?: string;
   } {
-    let status: 'ONLINE' | 'OFFLINE' | 'CONNECTING' = 'OFFLINE';
-    
-    if (this.connected && this.authenticated) {
-      status = 'ONLINE';
-    } else if (this.reconnectTimer || this.socket) {
-      status = 'CONNECTING';
-    }
-
     const health: any = {
       connected: this.connected,
       authenticated: this.authenticated,
@@ -579,14 +496,22 @@ export class AsteriskProductionAMIService implements OnModuleInit, OnModuleDestr
       activeChannels: this.activeChannels.size,
       lastPing: this.lastPing,
       uptime: this.connected ? Date.now() - this.lastPing.getTime() : 0,
-      status,
+      status: this.connectionState,
       reconnectAttempts: this.reconnectAttempts,
       maxReconnectAttempts: this.maxReconnectAttempts,
     };
 
-    // Add next retry time if reconnection is scheduled
-    if (this.reconnectTimer && this.reconnectAttempts < this.maxReconnectAttempts) {
-      health.nextRetryIn = this.getNextRetryDelay();
+    // Add diagnostics if offline
+    if (this.connectionState !== 'ONLINE') {
+      if (this.lastConnectionAttempt) {
+        health.lastAttempt = this.lastConnectionAttempt;
+      }
+      if (this.lastErrorReason) {
+        health.reason = this.lastErrorReason;
+      }
+      if (this.reconnectTimer && this.reconnectAttempts < this.maxReconnectAttempts) {
+        health.nextRetryIn = this.getNextRetryDelay();
+      }
     }
 
     return health;
@@ -828,12 +753,12 @@ export class AsteriskProductionAMIService implements OnModuleInit, OnModuleDestr
 
   /**
    * Get next retry delay with exponential backoff
+   * Attempt 1 → 10s, Attempt 2 → 30s, Attempt 3+ → 60s
    */
   private getNextRetryDelay(): number {
-    // Exponential backoff: 5s, 10s, 20s, 30s, 40s, 50s, 60s (max)
-    const delays = [5000, 10000, 20000, 30000, 40000, 50000, 60000];
-    const index = Math.min(this.reconnectAttempts, delays.length - 1);
-    return delays[index];
+    if (this.reconnectAttempts === 0) return 10000;  // 10 seconds
+    if (this.reconnectAttempts === 1) return 30000;  // 30 seconds
+    return 60000;  // 60 seconds for attempt 3+
   }
 
   /**
@@ -846,39 +771,57 @@ export class AsteriskProductionAMIService implements OnModuleInit, OnModuleDestr
     }
 
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      this.logger.error('═══════════════════════════════════════════════════════');
-      this.logger.error('❌ MAX RECONNECTION ATTEMPTS REACHED');
-      this.logger.error('═══════════════════════════════════════════════════════');
-      this.logger.error(`Attempted ${this.maxReconnectAttempts} times to reconnect to Asterisk AMI`);
-      this.logger.error(`Host: ${this.host}:${this.port}`);
-      this.logger.error('');
-      this.logger.error('⚠️  Asterisk AMI Status: PERMANENTLY OFFLINE');
-      this.logger.error('⚠️  Manual intervention required');
-      this.logger.error('✅ Application continues without telephony features');
-      this.logger.error('');
-      this.logger.error('To fix:');
-      this.logger.error('  1. Check Asterisk server status');
-      this.logger.error('  2. Verify network connectivity');
-      this.logger.error('  3. Verify manager.conf configuration');
-      this.logger.error('  4. Restart the application after fixing');
-      this.logger.error('═══════════════════════════════════════════════════════');
+      this.connectionState = 'ERROR';
+      
+      // Log once when max attempts reached
+      if (this.reconnectAttempts === this.maxReconnectAttempts) {
+        this.logger.error('┌─────────────────────────────────────────────┐');
+        this.logger.error('│  Asterisk OFFLINE - Max Attempts Reached   │');
+        this.logger.error('├─────────────────────────────────────────────┤');
+        this.logger.error(`│  Last Attempt: ${new Date().toLocaleString()}     │`);
+        this.logger.error(`│  Reason: ${this.lastErrorReason.padEnd(33)}│`);
+        this.logger.error(`│  Will retry every 60 seconds               │`);
+        this.logger.error('└─────────────────────────────────────────────┘');
+      }
+      
+      // Continue retrying every 60 seconds even after max attempts
+      const delay = 60000;
+      this.reconnectTimer = setTimeout(() => {
+        this.reconnectTimer = null;
+        this.attemptConnection();
+      }, delay);
       return;
     }
 
     this.reconnectAttempts++;
     const delay = this.getNextRetryDelay();
-
-    this.logger.log(`⏳ Scheduling Asterisk AMI reconnection attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay / 1000}s`);
+    
+    // Log concise reconnection info
+    this.logger.log('┌─────────────────────────────────────────────┐');
+    this.logger.log('│  Asterisk OFFLINE                          │');
+    this.logger.log('├─────────────────────────────────────────────┤');
+    this.logger.log(`│  Last Attempt: ${new Date().toLocaleString()}     │`);
+    this.logger.log(`│  Next Retry: ${new Date(Date.now() + delay).toLocaleString()}       │`);
+    this.logger.log(`│  Reason: ${this.lastErrorReason.padEnd(33)}│`);
+    this.logger.log('└─────────────────────────────────────────────┘');
 
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
-      this.logger.log(`🔄 Reconnection attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}...`);
-      
-      this.connect().catch((error) => {
-        // Error already logged in connect(), just continue
-        this.logger.debug(`Reconnect attempt ${this.reconnectAttempts} failed: ${error.message}`);
-      });
+      this.attemptConnection();
     }, delay);
+  }
+
+  /**
+   * Attempt connection (used for initial and retry attempts)
+   */
+  private attemptConnection(): void {
+    this.connectionState = 'CONNECTING';
+    this.lastConnectionAttempt = new Date();
+    
+    this.connect().catch((error) => {
+      // Error already logged in connect(), just update state
+      this.connectionState = 'OFFLINE';
+    });
   }
 
   /**
