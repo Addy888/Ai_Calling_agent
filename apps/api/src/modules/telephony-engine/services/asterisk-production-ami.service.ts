@@ -63,6 +63,25 @@ export interface CallChannel {
   duration?: number;
 }
 
+export type ConnectionStage = 
+  | 'DISCONNECTED'
+  | 'TCP_CONNECTING'
+  | 'TCP_CONNECTED'
+  | 'WAITING_BANNER'
+  | 'BANNER_RECEIVED'
+  | 'AUTHENTICATING'
+  | 'AUTHENTICATED';
+
+export type FailureReason =
+  | 'TCP_CONNECTION_FAILED'
+  | 'CONNECTION_REFUSED'
+  | 'CONNECTION_TIMEOUT'
+  | 'AMI_BANNER_TIMEOUT'
+  | 'AUTHENTICATION_FAILED'
+  | 'AUTHENTICATION_TIMEOUT'
+  | 'CONNECTION_CLOSED'
+  | 'UNKNOWN';
+
 @Injectable()
 export class AsteriskProductionAMIService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(AsteriskProductionAMIService.name);
@@ -86,9 +105,11 @@ export class AsteriskProductionAMIService implements OnModuleInit, OnModuleDestr
   private reconnectTimer: NodeJS.Timeout | null = null;
   private lastConnectionAttempt: Date | null = null;
   private lastErrorReason: string = '';
+  private lastFailureReason: FailureReason = 'UNKNOWN';
   
   // Connection state
   private connectionState: 'ONLINE' | 'OFFLINE' | 'CONNECTING' | 'ERROR' = 'OFFLINE';
+  private connectionStage: ConnectionStage = 'DISCONNECTED';
   
   // Buffer for AMI messages
   private buffer = '';
@@ -150,39 +171,75 @@ export class AsteriskProductionAMIService implements OnModuleInit, OnModuleDestr
     }
 
     this.connectionState = 'CONNECTING';
+    this.connectionStage = 'TCP_CONNECTING';
 
     return new Promise((resolve, reject) => {
       const socket = new net.Socket();
       socket.setKeepAlive(true, 60000);
       socket.setTimeout(10000); // 10 second timeout
 
-      let tcpConnected = false;
-      let greeterReceived = false;
+      let bannerTimeout: NodeJS.Timeout | null = null;
+      let authTimeout: NodeJS.Timeout | null = null;
 
       // Connection success
       socket.on('connect', () => {
-        tcpConnected = true;
+        this.connectionStage = 'TCP_CONNECTED';
         this.connected = true;
         this.reconnectAttempts = 0;
         this.socket = socket;
-        // Wait for greeter before authentication
+        
+        this.logger.debug('✅ TCP connection established, waiting for AMI banner...');
+        
+        // Start banner timeout
+        this.connectionStage = 'WAITING_BANNER';
+        bannerTimeout = setTimeout(() => {
+          if (this.connectionStage === 'WAITING_BANNER') {
+            this.lastErrorReason = 'AMI banner not received';
+            this.lastFailureReason = 'AMI_BANNER_TIMEOUT';
+            this.connectionStage = 'DISCONNECTED';
+            socket.destroy();
+            reject(new Error('AMI banner timeout'));
+          }
+        }, 5000); // 5 seconds to receive banner
       });
 
       // Data received
       socket.on('data', (data: Buffer) => {
         const dataStr = data.toString();
         
-        // Only process greeter if TCP is connected
-        if (!greeterReceived && tcpConnected) {
-          greeterReceived = true;
+        // First data after TCP connect is the banner
+        if (this.connectionStage === 'WAITING_BANNER') {
+          // Clear banner timeout
+          if (bannerTimeout) {
+            clearTimeout(bannerTimeout);
+            bannerTimeout = null;
+          }
           
-          // Send login after receiving greeter
+          this.connectionStage = 'BANNER_RECEIVED';
+          this.logger.debug('✅ AMI banner received, sending authentication...');
+          
+          // Start authentication
+          this.connectionStage = 'AUTHENTICATING';
+          authTimeout = setTimeout(() => {
+            if (this.connectionStage === 'AUTHENTICATING') {
+              this.lastErrorReason = 'Authentication timeout';
+              this.lastFailureReason = 'AUTHENTICATION_TIMEOUT';
+              this.connectionStage = 'DISCONNECTED';
+              socket.destroy();
+              reject(new Error('Authentication timeout'));
+            }
+          }, 5000); // 5 seconds to authenticate
+          
+          // Send login
           this.login()
             .then(() => {
               // Login sent successfully
             })
             .catch((error) => {
-              this.lastErrorReason = `Login failed: ${error.message}`;
+              this.lastErrorReason = `Login send failed: ${error.message}`;
+              this.lastFailureReason = 'AUTHENTICATION_FAILED';
+              this.connectionStage = 'DISCONNECTED';
+              if (authTimeout) clearTimeout(authTimeout);
               socket.destroy();
               reject(error);
             });
@@ -193,12 +250,33 @@ export class AsteriskProductionAMIService implements OnModuleInit, OnModuleDestr
 
       // Error - Most critical handler for TCP connection failures
       socket.on('error', (error: NodeJS.ErrnoException) => {
-        if (!tcpConnected) {
-          // TCP connection never established - store reason and reject
+        if (bannerTimeout) clearTimeout(bannerTimeout);
+        if (authTimeout) clearTimeout(authTimeout);
+        
+        // Determine failure reason based on connection stage and error code
+        if (this.connectionStage === 'TCP_CONNECTING') {
+          // TCP connection never established
+          if (error.code === 'ECONNREFUSED') {
+            this.lastErrorReason = 'Connection refused';
+            this.lastFailureReason = 'CONNECTION_REFUSED';
+          } else if (error.code === 'ETIMEDOUT') {
+            this.lastErrorReason = 'Connection timeout';
+            this.lastFailureReason = 'CONNECTION_TIMEOUT';
+          } else if (error.code === 'EHOSTUNREACH' || error.code === 'ENETUNREACH') {
+            this.lastErrorReason = 'Host unreachable';
+            this.lastFailureReason = 'TCP_CONNECTION_FAILED';
+          } else {
+            this.lastErrorReason = error.code || error.message;
+            this.lastFailureReason = 'TCP_CONNECTION_FAILED';
+          }
+        } else {
+          // Connection was established but failed later
           this.lastErrorReason = error.code || error.message;
-          this.connectionState = 'OFFLINE';
+          this.lastFailureReason = 'CONNECTION_CLOSED';
         }
         
+        this.connectionStage = 'DISCONNECTED';
+        this.connectionState = 'OFFLINE';
         this.connected = false;
         this.authenticated = false;
         socket.destroy();
@@ -207,17 +285,39 @@ export class AsteriskProductionAMIService implements OnModuleInit, OnModuleDestr
 
       // Closed
       socket.on('close', () => {
+        if (bannerTimeout) clearTimeout(bannerTimeout);
+        if (authTimeout) clearTimeout(authTimeout);
+        
+        if (this.connectionStage !== 'AUTHENTICATED') {
+          if (!this.lastErrorReason) {
+            this.lastErrorReason = 'Connection closed unexpectedly';
+            this.lastFailureReason = 'CONNECTION_CLOSED';
+          }
+        }
+        
         this.connected = false;
         this.authenticated = false;
         this.socket = null;
         this.connectionState = 'OFFLINE';
+        this.connectionStage = 'DISCONNECTED';
         this.scheduleReconnect();
       });
 
       // Timeout
       socket.on('timeout', () => {
-        this.lastErrorReason = 'Socket timeout';
+        if (bannerTimeout) clearTimeout(bannerTimeout);
+        if (authTimeout) clearTimeout(authTimeout);
+        
+        if (this.connectionStage === 'TCP_CONNECTING' || this.connectionStage === 'TCP_CONNECTED') {
+          this.lastErrorReason = 'Connection timeout';
+          this.lastFailureReason = 'CONNECTION_TIMEOUT';
+        } else {
+          this.lastErrorReason = 'Socket timeout';
+          this.lastFailureReason = 'UNKNOWN';
+        }
+        
         this.connectionState = 'OFFLINE';
+        this.connectionStage = 'DISCONNECTED';
         socket.destroy();
         reject(new Error('Socket timeout'));
       });
@@ -226,30 +326,29 @@ export class AsteriskProductionAMIService implements OnModuleInit, OnModuleDestr
       try {
         socket.connect(this.port, this.host);
       } catch (error) {
+        if (bannerTimeout) clearTimeout(bannerTimeout);
+        if (authTimeout) clearTimeout(authTimeout);
+        
         this.lastErrorReason = error.message;
+        this.lastFailureReason = 'TCP_CONNECTION_FAILED';
         this.connectionState = 'OFFLINE';
+        this.connectionStage = 'DISCONNECTED';
         reject(error);
         return;
       }
 
       // Wait for authentication
-      const authTimeout = setTimeout(() => {
-        if (!this.authenticated) {
-          this.lastErrorReason = 'Authentication timeout';
-          socket.destroy();
-          reject(new Error('Authentication timeout'));
-        }
-      }, 10000);
-
       const waitForAuth = () => {
         if (this.authenticated) {
-          clearTimeout(authTimeout);
+          if (authTimeout) clearTimeout(authTimeout);
           this.startPing();
           this.connectionState = 'ONLINE';
+          this.connectionStage = 'AUTHENTICATED';
           this.lastErrorReason = '';
+          this.lastFailureReason = 'UNKNOWN';
           resolve();
         } else if (socket.destroyed) {
-          clearTimeout(authTimeout);
+          if (authTimeout) clearTimeout(authTimeout);
           // Socket destroyed, stop waiting
         } else {
           setTimeout(waitForAuth, 100);
@@ -481,11 +580,13 @@ export class AsteriskProductionAMIService implements OnModuleInit, OnModuleDestr
     lastPing: Date;
     uptime: number;
     status: 'ONLINE' | 'OFFLINE' | 'CONNECTING' | 'ERROR';
+    stage: ConnectionStage;
     reconnectAttempts: number;
     maxReconnectAttempts: number;
     nextRetryIn?: number;
     lastAttempt?: Date;
     reason?: string;
+    failureType?: FailureReason;
   } {
     const health: any = {
       connected: this.connected,
@@ -497,6 +598,7 @@ export class AsteriskProductionAMIService implements OnModuleInit, OnModuleDestr
       lastPing: this.lastPing,
       uptime: this.connected ? Date.now() - this.lastPing.getTime() : 0,
       status: this.connectionState,
+      stage: this.connectionStage,
       reconnectAttempts: this.reconnectAttempts,
       maxReconnectAttempts: this.maxReconnectAttempts,
     };
@@ -508,6 +610,9 @@ export class AsteriskProductionAMIService implements OnModuleInit, OnModuleDestr
       }
       if (this.lastErrorReason) {
         health.reason = this.lastErrorReason;
+      }
+      if (this.lastFailureReason !== 'UNKNOWN') {
+        health.failureType = this.lastFailureReason;
       }
       if (this.reconnectTimer && this.reconnectAttempts < this.maxReconnectAttempts) {
         health.nextRetryIn = this.getNextRetryDelay();
@@ -547,14 +652,18 @@ export class AsteriskProductionAMIService implements OnModuleInit, OnModuleDestr
     if (!parsed) return;
 
     // Handle login response
-    if (!this.authenticated && parsed.response) {
+    if (this.connectionStage === 'AUTHENTICATING' && parsed.response) {
       if (parsed.response === 'Success' && parsed.message?.toLowerCase().includes('authentication')) {
         this.authenticated = true;
+        this.connectionStage = 'AUTHENTICATED';
         this.logger.log('✅ Authenticated to Asterisk AMI');
         return;
       } else if (parsed.response === 'Error') {
-        this.logger.error(`❌ Authentication failed: ${parsed.message || 'Unknown error'}`);
-        this.logger.error(`   Check username and password in manager.conf`);
+        this.lastErrorReason = 'Invalid AMI username or password';
+        this.lastFailureReason = 'AUTHENTICATION_FAILED';
+        this.connectionStage = 'DISCONNECTED';
+        this.logger.error(`❌ Authentication failed: ${parsed.message || 'Invalid credentials'}`);
+        this.logger.error(`   Check ASTERISK_AMI_USERNAME and ASTERISK_AMI_SECRET in .env`);
         return;
       }
     }
@@ -775,13 +884,7 @@ export class AsteriskProductionAMIService implements OnModuleInit, OnModuleDestr
       
       // Log once when max attempts reached
       if (this.reconnectAttempts === this.maxReconnectAttempts) {
-        this.logger.error('┌─────────────────────────────────────────────┐');
-        this.logger.error('│  Asterisk OFFLINE - Max Attempts Reached   │');
-        this.logger.error('├─────────────────────────────────────────────┤');
-        this.logger.error(`│  Last Attempt: ${new Date().toLocaleString()}     │`);
-        this.logger.error(`│  Reason: ${this.lastErrorReason.padEnd(33)}│`);
-        this.logger.error(`│  Will retry every 60 seconds               │`);
-        this.logger.error('└─────────────────────────────────────────────┘');
+        this.logConnectionStatus();
       }
       
       // Continue retrying every 60 seconds even after max attempts
@@ -797,18 +900,71 @@ export class AsteriskProductionAMIService implements OnModuleInit, OnModuleDestr
     const delay = this.getNextRetryDelay();
     
     // Log concise reconnection info
-    this.logger.log('┌─────────────────────────────────────────────┐');
-    this.logger.log('│  Asterisk OFFLINE                          │');
-    this.logger.log('├─────────────────────────────────────────────┤');
-    this.logger.log(`│  Last Attempt: ${new Date().toLocaleString()}     │`);
-    this.logger.log(`│  Next Retry: ${new Date(Date.now() + delay).toLocaleString()}       │`);
-    this.logger.log(`│  Reason: ${this.lastErrorReason.padEnd(33)}│`);
-    this.logger.log('└─────────────────────────────────────────────┘');
+    this.logConnectionStatus();
 
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       this.attemptConnection();
     }, delay);
+  }
+
+  /**
+   * Log connection status with proper reason differentiation
+   */
+  private logConnectionStatus(): void {
+    const now = new Date();
+    const nextRetry = new Date(now.getTime() + this.getNextRetryDelay());
+    
+    // Get human-readable reason
+    let reasonText = this.lastErrorReason;
+    
+    switch (this.lastFailureReason) {
+      case 'TCP_CONNECTION_FAILED':
+        reasonText = `TCP connection failed: ${this.lastErrorReason}`;
+        break;
+      case 'CONNECTION_REFUSED':
+        reasonText = `Connection refused (${this.host}:${this.port})`;
+        break;
+      case 'CONNECTION_TIMEOUT':
+        reasonText = `TCP connection timeout`;
+        break;
+      case 'AMI_BANNER_TIMEOUT':
+        reasonText = `AMI banner not received`;
+        break;
+      case 'AUTHENTICATION_FAILED':
+        reasonText = `Invalid AMI username or password`;
+        break;
+      case 'AUTHENTICATION_TIMEOUT':
+        reasonText = `Authentication timeout`;
+        break;
+      case 'CONNECTION_CLOSED':
+        reasonText = `Connection closed: ${this.lastErrorReason}`;
+        break;
+      default:
+        reasonText = this.lastErrorReason || 'Unknown error';
+    }
+    
+    const isMaxAttempts = this.reconnectAttempts >= this.maxReconnectAttempts;
+    const title = isMaxAttempts ? 'Asterisk OFFLINE - Max Attempts Reached' : 'Asterisk OFFLINE';
+    
+    this.logger.log('┌─────────────────────────────────────────────┐');
+    this.logger.log(`│  ${title.padEnd(43)}│`);
+    this.logger.log('├─────────────────────────────────────────────┤');
+    this.logger.log(`│  Stage: ${this.connectionStage.padEnd(36)}│`);
+    this.logger.log(`│  Last Attempt: ${now.toLocaleString().padEnd(27)}│`);
+    
+    if (!isMaxAttempts) {
+      this.logger.log(`│  Next Retry: ${nextRetry.toLocaleString().padEnd(29)}│`);
+    } else {
+      this.logger.log(`│  Will retry every 60 seconds               │`);
+    }
+    
+    // Truncate reason if too long
+    if (reasonText.length > 33) {
+      reasonText = reasonText.substring(0, 30) + '...';
+    }
+    this.logger.log(`│  Reason: ${reasonText.padEnd(33)}│`);
+    this.logger.log('└─────────────────────────────────────────────┘');
   }
 
   /**

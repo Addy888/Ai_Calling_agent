@@ -311,9 +311,31 @@ export class HealthService {
         message = 'Connected and authenticated';
       } else if (health.status === 'CONNECTING') {
         status = 'WARNING';
-        message = `Connecting (attempt ${health.reconnectAttempts}/${health.maxReconnectAttempts})`;
+        message = `Connecting (${health.stage})`;
       } else {
-        message = `Offline (attempted ${health.reconnectAttempts}/${health.maxReconnectAttempts} times)`;
+        // Provide detailed failure reason
+        const stage = health.stage || 'DISCONNECTED';
+        const failureType = health.failureType;
+        
+        if (failureType === 'CONNECTION_REFUSED') {
+          message = `Connection refused at ${health.host}:${health.port}`;
+        } else if (failureType === 'CONNECTION_TIMEOUT') {
+          message = `TCP connection timeout`;
+        } else if (failureType === 'TCP_CONNECTION_FAILED') {
+          message = `TCP connection failed: ${health.reason}`;
+        } else if (failureType === 'AMI_BANNER_TIMEOUT') {
+          message = `Connected but AMI banner not received`;
+        } else if (failureType === 'AUTHENTICATION_FAILED') {
+          message = `Invalid AMI username or password`;
+        } else if (failureType === 'AUTHENTICATION_TIMEOUT') {
+          message = `Authentication timeout`;
+        } else {
+          message = `Offline (stage: ${stage})`;
+        }
+        
+        if (health.reconnectAttempts > 0) {
+          message += ` - attempt ${health.reconnectAttempts}/${health.maxReconnectAttempts}`;
+        }
       }
 
       return {
