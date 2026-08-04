@@ -15,6 +15,8 @@ import {
   TelephonyWebhookController,
 } from './telephony-engine.controller';
 import { GSMGatewayController } from './gsm-gateway.controller';
+import { TelephonyHealthController } from './telephony-health.controller';
+import { AsteriskAdminController } from './asterisk-admin.controller';
 
 // Core Services
 import { TelephonyManagerService } from './services/telephony-manager.service';
@@ -42,7 +44,11 @@ import { AsteriskProvider } from './providers/asterisk.provider';
 // Advanced Services
 import { AsteriskAMIService } from './services/asterisk-ami.service';
 import { SystemDiagnosticsService } from './services/system-diagnostics.service';
-import { TelephonyHealthController } from './telephony-health.controller';
+
+// Production Services
+import { AsteriskProductionAMIService } from './services/asterisk-production-ami.service';
+import { CampaignCallDispatcherService } from './services/campaign-call-dispatcher.service';
+import { AsteriskDiagnosticsService } from './services/asterisk-diagnostics.service';
 
 @Module({
   imports: [
@@ -55,6 +61,7 @@ import { TelephonyHealthController } from './telephony-health.controller';
     TelephonyWebhookController,
     GSMGatewayController,
     TelephonyHealthController,
+    AsteriskAdminController,
   ],
   providers: [
     // Main Manager
@@ -80,6 +87,11 @@ import { TelephonyHealthController } from './telephony-health.controller';
     AsteriskAMIService,
     SystemDiagnosticsService,
 
+    // Production Services
+    AsteriskProductionAMIService,
+    CampaignCallDispatcherService,
+    AsteriskDiagnosticsService,
+
     // Telephony Provider Implementations
     TwilioProvider,
     ExotelProvider,
@@ -97,6 +109,9 @@ import { TelephonyHealthController } from './telephony-health.controller';
     ConnectionManagerService,
     AsteriskAMIService,
     SystemDiagnosticsService,
+    AsteriskProductionAMIService,
+    CampaignCallDispatcherService,
+    AsteriskDiagnosticsService,
   ],
 })
 export class TelephonyEngineModule {}

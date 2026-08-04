@@ -20,7 +20,9 @@
     "db:seed": "cd database/prisma && npx prisma db seed",
     "db:studio": "cd database/prisma && npx prisma studio",
     "lint": "npm run lint --workspaces",
-    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "diagnose": "node scripts/diagnose-production.js",
+    "verify:bullmq": "node scripts/verify-bullmq-fix.js"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
